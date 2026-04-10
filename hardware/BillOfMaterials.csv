@@ -1,0 +1,20 @@
+﻿,,,,,,,
+No.,Item,Vendor/ Manufacturer,Item ID,Qty,,Price/unit (USD),Price Total (USD)
+1,Flowmeters 0-5LPM (with connecting barb at back),CNBTR,B019YS4PSG,4,,13.99,55.96
+2,Connectors (T-piece or Y-piece),ResOne,TC-120-5,2,5 per pack,5.99,11.98
+3,Soft PVC Plastic Tubing for Excess Air ,McMaster-Carr,5233K113,1,50ft,23,23
+4,Nasal Cannulas,Medline,HCS4504B,1,50 per pack,0.6,0.6
+5,Pressure Relief Valve for Wide Mouth Jars,Nor Cal Brewing Solutions,,4,,19.99,79.96
+6,6V Air Valve with 2-pin JST PH Connector,Adafruit,FA0520E,5,,2.66,13.3
+7,Air Connector Adapters (short),Sunset Healthcare BPR,RES010TC,18,20 per pack,1.75,35
+8,Spriek Smart Nebullizer,Spriek,B0CPBKNDV6,1,,69.99,69.99
+9,Arduino Uno,Arduino,,1,,27.6,27.6
+10,3.7V 2500mAh Lithium Ion Battery,Liter energybattery,306080,1,,10.89,10.89
+11,Adafruit PowerBoost500 Charger,Adafruit,8541585591,1,,21.09,21.09
+12,Wide Mouth Mason Jars,Ball,,1,4 per pack,21.87,21.87
+13,Soft Tygon PVC Plastic Tubing for Connections,Tygon,B-44-3 ,1,2ft,1.1,1.1
+13,Tygon Tubing,Tygon, ND-100-65,8,3.3ft,24.77,24.77
+14,BME280 Sensor,Bosch Sensortec,BME280,1,,3.9,3.9
+15,PCB for BME280 Sensor,OSHPark,Coleman-1,1,,0.3,0.3
+16,Logic Level Converter Bi-directional 3.3V-5V,HiLetgo,8541740602,1,10 per pack,0.75,0.75
+,"Not included: 3D printed parts, resistors,diodes,jumper cables",,,,,Total:,402.06
