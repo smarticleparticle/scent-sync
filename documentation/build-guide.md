@@ -114,19 +114,23 @@ Route exhaust tubing outside experimental room
 Operating Protocol
 
 The system operates in four synchronized stages:
+
 Stage 1: Breath Detection
 Arduino continuously monitors BME280 humidity measurements
 Calculates derivatives within rolling window to detect respiratory phase transitions
 Inhalation onset: Derivatives transition from positive to negative at humidity peak, followed by sustained negative derivatives
 Exhalation onset: Sustained positive derivatives indicate increasing humidity from exhaled air
+
 Stage 2: Odor Preparation
 Random inter-stimulus interval: 15-30 seconds
 Activates selected odor channel's primary solenoid for up to 10 seconds
 Draws scented air through bubble humidifier
+
 Stage 3: Timed Release
 Upon detection of exhalation (following first inhalation), secondary solenoid opens for 1 second
 Scented air traverses 1.21m nasal cannula
 Timed to arrive at nose at onset of subsequent inhalation
+
 Stage 4: EEG Synchronization
 TTL pulse transmitted to EEG system when second inhalation is detected
 Marks precise timestamp of inhalation onset (scent arrival)
