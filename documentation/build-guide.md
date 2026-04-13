@@ -133,7 +133,7 @@ This low-cost olfactometer delivers odors synchronized with natural nasal breath
    - Connect external lithium-ion battery to power solenoids
    - Wire BME280 to Arduino through level shifter
    - Configure TTL output pins for EEG system
-2. Upload Arduino code (see software repository)
+2. Upload Arduino code (see firmware repository)
 
 ### 5. System Integration
 
@@ -174,19 +174,6 @@ The system operates in four synchronized stages:
 
 ---
 
-## Flow Rate Calculations
-
-**After secondary solenoid:**
-- Average flow rate: Q ≈ 0.35 L/min ≈ 5.83×10⁻⁶ m³/s
-- Nasal cannula inner diameter: 2.5mm
-- Cross-sectional area: A = π(0.00125)² = 4.91×10⁻⁶ m²
-- Velocity: v ≈ Q/A = 1.19 m/s
-- Travel time through 1.2m cannula: t ≈ 1.2m / 1.19m/s = 1.00s
-
-This ensures scented air arrives during the subject's inhalation.
-
----
-
 ## Safety Considerations
 
 1. **Pressure Relief:** 1-5 PSI pop-off valves protect against over-pressurization
@@ -196,46 +183,3 @@ This ensures scented air arrives during the subject's inhalation.
 5. **Hygiene:** Disposable nasal cannulas, easily cleanable glass containers
 
 ---
-
-## Bill of Materials
-
-### Major Components
-
-- Spriek Intelligent Digital Display Nebulizer
-- Arduino Uno
-- Bosch BME280 sensor
-- 5× 3-way solenoid valves
-- 4× Flowmeters (0-5 L/min)
-- 4× Ball® wide-mouth mason jars
-- 4× Pressure relief valves (1-5 PSI)
-- 2500mAh lithium-ion battery
-- Medical nasal cannula
-- Protective diodes (1 per solenoid)
-
-### Consumables
-
-- Tygon tubing (two sizes)
-- "Y" connectors
-- Essential oils (peppermint, oregano, grapefruit)
-- Deionized water
-- Flexible PCB material
-- 3D printing filament for housing
-
-### Electronics Components
-
-- Transistors for solenoid switching
-- Level shifter for BME280
-- Wire and connectors
-- TTL output connectors
-
----
-
-## References
-
-Design considerations based on:
-- Flow rate recommendations for nasal comfort
-- Bubble humidifier performance characteristics
-- Sensor placement for optimal respiratory monitoring
-- TTL pulse timing for EEG synchronization
-
-For Arduino code and additional documentation, see the project repository.
