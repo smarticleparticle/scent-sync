@@ -1,0 +1,19 @@
+# Word-embedding analysis (scripts/run_word_scoring.py; ported from epochs_eeg_respiration_withtimestamps.ipynb, cells 21-27, 29-30).
+# Needs sentence-transformers (PyTorch backend) and, on first use, internet access to download the language model.
+# Versions of the run that produced the paper's numbers (results/word_scoring/embedding_versions.json): sentence-transformers 6.1.0, torch 2.14.1,
+# transformers 5.19.0; model all-mpnet-base-v2 at Hugging Face commit e8c3b32edf5434bc2275fc9bab85f82640a19130 (pinned in config/config.yaml).
+# The main environment.yml already contains these pins; this stand-alone file is only for running the word-embedding stage separately.
+name: olfaction-embeddings
+channels: [conda-forge]
+dependencies:
+  - python=3.12
+  - pandas
+  - numpy
+  - scipy
+  - matplotlib
+  - seaborn
+  - pip
+  - pip:
+      - torch==2.14.1
+      - transformers==5.19.0
+      - sentence-transformers==6.1.0      # model used for the paper: all-mpnet-base-v2 (all-MiniLM-L6-v2 was an earlier, unused try)

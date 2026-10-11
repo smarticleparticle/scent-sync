@@ -1,0 +1,23 @@
+# Synthetic test of the PAC chain (compute -> statistics -> Fig. 2), independent of the epoch/ERSP smoke test:
+#   python tests/make_synthetic_pac_files.py tests/data/pac
+#   snakemake fig2 fooof_gating --configfile config/test_pac.yaml -c1
+paths:
+  full_recordings_dir: tests/data/pac
+  pac_results: tests/data/pac/pac_results_humidity.npy
+  psd_cache: tests/data/pac/psd_cache.npy
+  info_dir: tests/data/pac/info
+  results: results_test_pac
+  figures: figures_test_pac
+subjects:
+  normosmia: ["22", "23", "24", "26"]
+pac:
+  run: true
+  n_surrogates: 20
+  min_channels_wholehead: 3
+  n_permutations_cluster: 100
+fooof:
+  run: true
+  min_channels: 3
+  n_perm: 300
+checks:
+  enabled: false

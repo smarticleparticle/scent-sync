@@ -1,0 +1,266 @@
+# ---------------------------------------------------------------------------
+# Central configuration.  Everything that used to be hardcoded in the notebook
+# (paths, subject lists, bin definitions, seeds, expected values) lives here.
+# ---------------------------------------------------------------------------
+
+paths:
+  # --- raw-ish inputs (EEGLAB-preprocessed EEG + olfactometer CSV); only needed to re-create the epochs ---
+  raw_eeglab: data/raw/eeglab/{subject}/{subject}_EEG_preprocessed.mat
+  raw_olfactometer: data/raw/olfactometer/OlfactometerSubject{subject}.csv
+  # --- preprocessed data: created from the raw inputs above by stage 0, OR provided directly ---
+  # The epochs file the paper's ERSPs were computed from.  (the rebuilt v2 file below differs from it; to run from v2
+  # instead, add  --configfile config/epochs_v2.yaml  to the snakemake command.)
+  epochs: data/preprocessed/epochs_eeg_respiration.npy
+  # What the raw-data step (make_epochs) writes.  Deliberately a different file from the one above, so that it can never overwrite
+  # or masquerade as the original.  (config/epochs_v2.yaml points `epochs` here to run the pipeline from the rebuilt file.)
+  epochs_rebuilt: data/preprocessed/epochs_eeg_respiration_withtimestamps_v2.npy
+  full_recordings_dir: data/preprocessed      # full_respiration_EEG_{v2,humidity}.npy (PAC / timing analyses)
+  epochs_v2_for_timing: data/preprocessed/epochs_v2_for_timing.npy       # small: respiration epochs + timestamps of the v2 file (no EEG)
+  continuous_respiration_v2: data/preprocessed/continuous_respiration_v2.npy   # small: continuous respiration (no EEG)
+  psd_cache: data/preprocessed/psd_cache.npy                # Welch spectra of all channels (few MB; for the FOOOF analysis)
+  pac_results: data/preprocessed/pac_results_humidity.npy   # output of the slow PAC step -- or drop a previous result here
+  info_dir: data/preprocessed/info            # subject<ID>_info.fif for EVERY subject (see README)
+  paper_values: config/paper_values.yaml
+  # --- outputs ---
+  results: results
+  figures: figures
+
+ersp:
+  # end of the sniff-triggered window (s after inhale onset; start is fixed at -0.5 s)
+  time_long_end: 3.78     # average first-breath duration
+  time_short_end: 2.0     # "traditional" 2-s time-locked ERSP
+
+subjects:
+  # the 17 subjects used for classification (was NORMOSMIA in notebook cell 0)
+  normosmia: ["22", "23", "24", "26", "27", "28", "29", "31", "32", "33",
+              "34", "35", "36", "37", "38", "39", "40"]
+  # skipped when generating ERSPs (generate_ersp.py: "bad respiration data")
+  ersp_exclude: ["30"]
+
+odors: [peppermint, oregano, citrus]
+
+classification:
+  C: 1.0
+  trial_start: 0          # first 3 trials of each condition (keys [0:3])
+  trial_end: 3
+  seed: 42
+
+  # RPL-ERSP candidate binnings over the 0-360 deg breath cycle (notebook cell 5; Table S1).  Each is crossed with
+  # {theta, alpha, beta}.  The paper uses the 4-bin version throughout.
+  phase_strategies:
+    "1-bin (full)": {p_full: [0, 360]}
+    "2-bin":        {p_inhale: [0, 180], p_exhale: [180, 360]}
+    "4-bin":
+      p0_90:    [0, 90]
+      p90_180:  [90, 180]
+      p180_270: [180, 270]
+      p270_360: [270, 360]
+  phase_main_strategy: "4-bin"
+
+  # candidate time-locked binnings, 2-s window (notebook cells 3 / 59)
+  time_strategies_2s:
+    "1-bin (full)": {t_full: [0, 2.0]}
+    "2-bin":        {t_early: [0, 1.0], t_late: [1.0, 2.0]}
+    "4-bin":        {t0_0.5: [0, 0.5], t0.5_1.0: [0.5, 1.0], t1.0_1.5: [1.0, 1.5], t1.5_2.0: [1.5, 2.0]}
+
+  # candidate time-locked binnings, 3.78-s window (notebook cells 12 / 59)
+  time_strategies_378s:
+    "1-bin (full)": {t_full: [0, 3.78]}
+    "2-bin":        {t_early: [0, 1.89], t_late: [1.89, 3.78]}
+    "4-bin":        {t0_0.945: [0, 0.945], t0.945_1.89: [0.945, 1.89],
+                     t1.89_2.835: [1.89, 2.835], t2.835_3.78: [2.835, 3.78]}
+  # the 3.78-s analysis reported in the paper uses the 4-bin version for every odor (notebook cell 26)
+  time_378s_comparison_strategy: "4-bin"      # used for Fig. 4 (notebook cell 26)
+
+  # Table S4 (notebook cell 57): paired permutation test on per-subject decision-value gaps,
+  # FDR (Benjamini-Hochberg) over the 6 comparisons.  "Longer" = best of the 3 binnings by AUC.
+  gap_test:
+    n_perm: 5000
+    seed: 0
+    ci: 90
+
+# Habituation (Section 1.7, Fig. 5; notebook cells 76-84): same phase-locked 4-bin classifier on early vs late trials.
+habituation:
+  early_trials: [0, 3]     # trials 1-3  (python slice [0:3])
+  late_trials: [5, 8]      # trials 6-8  (python slice [5:8])
+  n_perm: 5000
+  n_boot: 2000             # bootstrap resamples for the CI whiskers of Fig. 5A
+  seed: 42
+  # Fig. 5B (notebook cell 84) averages a feature's selection frequency only over the odors in which it was ever
+  # selected.  false = reproduce the published figure; true = count odors where it was never selected as 0
+  # (the convention of Fig. 4A).
+  fig5b_count_unselected_as_zero: false
+  fig5b_robust_threshold: 0.75
+
+# Respiration-EEG phase-amplitude coupling (Section 1.1, Fig. 2; notebook cells 85-98).  The surrogate test is SLOW
+# (hours for 17 subjects x ~120 channels x 4 bands x 1000 surrogates); put a previously computed result at paths.pac_results
+# to skip it.
+pac:
+  run: true                # false: skip the PAC stage entirely (e.g. for the synthetic smoke test)
+  plot_info_subject: "22"   # subject whose info/montage is used for the topoplots (notebook cell 93)
+  sfreq_eeg: 250
+  sfreq_resp: 8.75714285714
+  resp_band: [0.1, 0.4]
+  freq_bands: {theta: [4, 8], alpha: [8, 12], beta: [12, 30], low_gamma: [30, 40]}
+  n_phase_bins: 18
+  n_surrogates: 1000
+  min_shift_sec: 30.0      # 3 x the longest respiratory period (1 / 0.1 Hz)
+  min_cycle_duration: 2.0
+  max_cycle_duration: 8.0
+  seed: 42
+  # "notebook": one sequential pass seeded once -- reproduces the notebook's random draws exactly (cannot be parallelised);
+  # "per_subject": re-seed per subject (independent subjects; statistically equivalent, different surrogate draws)
+  seed_mode: notebook
+  min_channels_wholehead: 20        # a subject needs >= this many channels in a band to enter the group test
+  n_permutations_cluster: 1000
+
+# FOOOF oscillatory gating of the PAC effects (Section 1.2, Table S2).  Works from the small spectra cache (paths.psd_cache).
+fooof:
+  run: true
+  settings: {peak_width_limits: [1, 12], max_n_peaks: 6, min_peak_height: 0, aperiodic_mode: fixed}
+  thresholds: [1.5, 2.0, 2.5, 3.0]      # peak_threshold (SD above the aperiodic fit) of Table S2
+  default_threshold: 2.0
+  min_channels: 20                      # channels with a peak required per subject and band
+  n_perm: 50000
+  seed: 42
+
+# Odor-arrival timing (Section 1.8, SI Tables S5-S6; notebook cells 40, 42, 44, 49).  Needs the v2 epochs file (its timestamps) and the
+# continuous respiration; both are reduced to small files by the `timing_inputs` rule.
+timing:
+  run: true
+  sfreq_eeg: 250
+  sfreq_resp: 8.75714285714
+  resp_band: [0.1, 0.4]
+  resp_filter_order: 2
+  accept_window: [-0.4, 3.0]         # the ERSP quality-control windows (seconds relative to the TTL)
+  reject_window: [-1.0, -0.4]
+  prestim_duration: 1.0
+  min_duration: 2.0                  # breath length limits (s)
+  max_duration: 8.0
+  transit_time_measured: 1.096       # s; the (rounded) value the notebook used for the classification of each trial
+  flow_rate_Lmin: 0.41               # measured at the cannula outlet
+  segments:                          # tubing between the final valve and the cannula tip (SI 1.2)
+    - {name: "Small connector tubing", inner_diameter_mm: 2.0, length_m: 0.0053}
+    - {name: "Main cannula tubing", inner_diameter_mm: 2.794, length_m: 1.2192}
+  pct_errors: [-25, -20, -15, -10, -5, 0, 5, 10, 15, 20, 25]    # assumed flow-rate measurement error (Table S6)
+
+# Breath durations by condition (Section 1.3, Table S3); starts from the ORIGINAL epochs file, takes about a minute.
+breath:
+  run: true
+
+# Subject-28 sensitivity (SI 1.4, Table S7); starts from the ORIGINAL epochs file and the phase-aligned ERSP; a few minutes.
+subject28:
+  run: true
+  subject: "28"
+  C: 1.0
+  trial_start: 0
+  trial_end: 3
+
+# Cluster-based permutation tests of the ERSPs (Section 1.5, SI Fig. S4; notebook cells 117-128).  Starts from the three ERSP files.
+cluster_perm:
+  run: true
+  n_perm: 1000              # the published p-values use 1000 (p = (k + 1) / 1001, seed 42); more permutations only for a robustness run
+  trial_start: 0            # trials 1-3, pooled over the three odors
+  trial_end: 3
+  theta: [4, 8]             # first half of the breath / window, tail: odor > water
+  alpha: [8, 12]            # second half, tail: odor < water
+  bin_factor: 1             # no coarsening of the 360 phase bins (notebook cell 122-123)
+  sensitivity:              # wider bands on the phase-locked ERSP (notebook cells 124-125); not in the paper
+    - {name: theta_3_9_inhale,       freq_range: [3, 9],  phase_range: [0, 180],   tail: positive}
+    - {name: alpha_beta_7_13_exhale, freq_range: [7, 13], phase_range: [180, 360], tail: negative}
+
+# Fig. 3 (notebook cell 60) and the right panel of Fig. 1 (notebook cell 115).
+fig3:
+  run: true
+  subjects_individual: ["33", "40"]    # shown as "Subject 1" and "Subject 2" in panels B and C
+  n_trials: 3
+fig1_resp:
+  run: true
+  subject: "22"                        # the example trace of Fig. 1 (labelled "Subject 1" in the figure)
+  trial_idx: 0                         # first accepted trial
+  # the snippet file is deposited; it is rebuilt from the raw data only if it is missing and the raw files exist
+  trial_file: data/preprocessed/fig1_example_trial.npy
+
+# Free-response odor identification (Section 1.6, Fig. 4C/D, SI 3.1; preprocessing-notebook cells 21-27, 29-30).  Needs sentence-transformers and, once, internet
+# access to download the model (see envs/embeddings.yml); off by default so the other stages run without it:  snakemake word_scoring --config ...  or
+# set run: true here.  GoodScents comes from the committed subset file (no internet).
+word_scoring:
+  run: false
+  responses: config/free_responses.yaml
+  goodscents_selected: config/goodscents_selected.csv
+  goodscents_ref: main            # only used with --download / make_goodscents_subset.py; pin to a commit id (git ls-remote ... HEAD)
+  model: all-mpnet-base-v2
+  model_revision: e8c3b32edf5434bc2275fc9bab85f82640a19130   # Hugging Face commit id of all-mpnet-base-v2 used for the paper (the run records the one actually used)
+  n_perm: 10000
+  seed: 0
+
+# Self-check against numbers printed in the paper (config/paper_values.yaml).
+checks:
+  enabled: true
+  strict: false            # true => the workflow fails if a published value is not reproduced
+
+# ---------------------------------------------------------------------------
+# Stage 0: raw -> epochs / continuous recordings   (replaces epochs_eeg_respiration_withtimestamps.ipynb)
+# Everything below used to be hardcoded inside the notebook cells (identical in all four of them).
+# ---------------------------------------------------------------------------
+recordings:
+  resp_sfreq: 8.75714285714       # olfactometer humidity sensor sampling rate (Hz)
+  tmin: -1.0                      # epoch window around odor onset (s)
+  tmax: 15.0
+  resp_clip: [0, 200]             # humidity outside this range = sensor glitch -> interpolated
+  minmax_smooth_window: 70        # smoothing for the min-max ("humidity") variant used by PAC
+  csv_drop_first_rows: {"27": 73}  # subject 27: first 73 CSV rows are not part of the recording
+
+  # EEGLAB channel labels flagged bad (marked in info['bads']; data are kept)
+  bad_channels:
+    "19": ["E57", "E9", "E17", "E107", "E81"]
+    "20": ["E76", "E62", "E75", "E77", "E78", "E55", "E71", "E81", "E54"]
+    "22": ["E63", "E56", "E88", "E94", "E115"]
+    "23": ["E44", "E88", "E68", "E63", "E73"]
+    "24": ["E63", "E107", "E34", "E33"]
+    "25": []
+    "26": ["E78", "E2", "E120", "E54"]
+    "27": ["E121", "E32", "E26", "E120", "E1", "E94"]
+    "28": ["E27", "E32", "E38", "E33", "E43"]
+    "29": []
+    "30": ["E43", "E88", "E99"]
+    "31": ["E26", "E107", "E25", "E1", "E89", "E121"]
+    "32": []
+    "33": []
+    "34": ["E14", "E56", "E26", "E17", "E120", "E38"]
+    "35": ["E35", "E20", "E29", "E40", "E34", "E27"]
+    "36": ["E120", "E43", "E39", "E45", "E116", "E111", "E112", "E3"]
+    "37": []
+    "38": ["E68", "E65", "E69", "E73", "E88", "E45", "E105", "E57"]
+    "39": []
+    "40": ["E105", "E25", "E81"]
+
+  # samples between EEG recording start and respiration (CSV) start, per subject
+  eeg_resp_offset_samples:
+    "19": 12401
+    "20": 13299
+    "22": 15869
+    "23": 5786
+    "24": 4411
+    "25": 6478
+    "26": 23002
+    "27": 563
+    "28": 5789
+    "29": 4361
+    "30": 4990
+    "31": 10585
+    "32": 9771
+    "33": 6487
+    "34": 4318
+    "35": 4291
+    "36": 5607
+    "37": 4747
+    "38": 5051
+    "39": 5084
+    "40": 4275
+
+  # Hand corrections for epochs whose EEG/respiration counts did not match (were `if subject_id == ...` in cell 2).
+  corrections:
+    drop_last_kept_epoch: {"24": [peppermint], "28": [oregano], "35": [citrus]}
+    shift_kept_indices: {"27": {peppermint: -1}}   # index shift of kept epochs; trial 0 is then dropped (below)
+    drop_first_trial: ["27"]                       # remove trial 0 of every condition

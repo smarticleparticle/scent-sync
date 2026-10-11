@@ -1,0 +1,4 @@
+# Overlay: skip the free-response analysis (Fig. 4C/D, Section 1.6, SI 3.1), e.g. if sentence-transformers / the model download is not available.
+#   snakemake --configfile config/deposit.yaml config/no_word_scoring.yaml -c4
+word_scoring:
+  run: false

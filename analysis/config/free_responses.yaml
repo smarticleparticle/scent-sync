@@ -1,0 +1,70 @@
+# Free-response odor descriptions (analysis notebook epochs_eeg_respiration_withtimestamps.ipynb, cell 21, verbatim).
+# One entry per participant and odor, as typed by the experimenter after the session; null = no response.  'grapefruit' is called 'citrus' elsewhere.
+subject_22:
+  peppermint: [mint]
+  grapefruit: [citrus]
+  oregano: [cocoa butter]
+subject_23:
+  peppermint: [peppermint]
+  grapefruit: [citrus]
+  oregano: [sweet, woody]
+subject_24:
+  peppermint: [gum]
+  grapefruit: [watermelon]
+  oregano: [stale]
+subject_26:
+  peppermint: [mint]
+  grapefruit: [null]
+  oregano: [cocoa butter]
+subject_27:
+  peppermint: [hospital]
+  grapefruit: [neutral]
+  oregano: [herb]
+subject_28:
+  peppermint: [mint]
+  grapefruit: [null]
+  oregano: [licorice, star anise]
+subject_29:
+  peppermint: [mint]
+  grapefruit: [pleasant but unidentifiable]
+  oregano: [null]
+subject_31:
+  peppermint: [mint]
+  grapefruit: [soap]
+  oregano: [herb]
+subject_32:
+  peppermint: [mint]
+  grapefruit: [null]
+  oregano: [null]
+subject_33:
+  peppermint: [mint]
+  grapefruit: [chocolate, lavender]
+  oregano: [herb, whole foods]
+subject_34:
+  peppermint: [mint, white]
+  grapefruit: [pink]
+  oregano: [herb, green]
+subject_35:
+  peppermint: [mint]
+  grapefruit: [home, warm]
+  oregano: [herb]
+subject_36:
+  peppermint: [mint]
+  grapefruit: [something else unsure]
+  oregano: [something else unsure]
+subject_37:
+  peppermint: [mint]
+  grapefruit: [citrus]
+  oregano: [soap]
+subject_38:
+  peppermint: [mint]
+  grapefruit: [null]
+  oregano: [null]
+subject_39:
+  peppermint: [eucalyptus, plants]
+  grapefruit: [essential oil]
+  oregano: [soap]
+subject_40:
+  peppermint: [mint]
+  grapefruit: [plants]
+  oregano: [dirt]

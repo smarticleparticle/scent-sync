@@ -1,0 +1,48 @@
+# Overrides for the synthetic smoke test (raw -> epochs -> ERSP -> classification):
+#   python tests/make_synthetic_raw.py tests/data/raw tests/data/preprocessed/info
+#   snakemake --configfile config/test.yaml -c3
+# The bad-channel / offset values below must match tests/make_synthetic_raw.py (TEST_*).
+paths:
+  raw_eeglab: tests/data/raw/eeglab/{subject}/{subject}_EEG_preprocessed.mat
+  raw_olfactometer: tests/data/raw/olfactometer/OlfactometerSubject{subject}.csv
+  epochs: tests/data/preprocessed/epochs_eeg_respiration_withtimestamps_v2.npy
+  epochs_rebuilt: tests/data/preprocessed/epochs_eeg_respiration_withtimestamps_v2.npy
+  full_recordings_dir: tests/data/preprocessed
+  info_dir: tests/data/preprocessed/info
+  epochs_v2_for_timing: tests/data/preprocessed/epochs_v2_for_timing.npy
+  continuous_respiration_v2: tests/data/preprocessed/continuous_respiration_v2.npy
+  results: results_test
+  figures: figures_test
+subjects:
+  normosmia: ["22", "23", "24", "27", "28", "35"]
+recordings:
+  bad_channels:
+    "22": ["E3"]
+    "23": []
+    "24": ["E4"]
+    "27": ["E2"]
+    "28": []
+    "35": ["E1"]
+  eeg_resp_offset_samples: {"22": 500, "23": 250, "24": 0, "27": 125, "28": 375, "35": 750}
+classification:
+  gap_test:
+    n_perm: 300
+habituation:
+  n_perm: 300
+  n_boot: 100
+checks:
+  enabled: false
+pac:
+  run: false
+fooof:
+  run: false
+breath:
+  run: true
+timing:
+  run: true
+cluster_perm:
+  n_perm: 40          # the published p-values use 1000; the smoke test only checks that the stage runs
+fig3:
+  subjects_individual: ["22", "24"]      # the synthetic data has no subjects 33 / 40
+fig1_resp:
+  trial_file: tests/data/preprocessed/fig1_example_trial.npy     # keep the synthetic snippet out of data/preprocessed (that file is the real, deposited one)

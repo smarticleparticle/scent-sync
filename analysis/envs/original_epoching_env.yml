@@ -1,0 +1,16 @@
+# ARCHIVAL: the environment the epochs / continuous-recording files were ORIGINALLY created in
+# (your `mne` kernel; versions from mne.sys_info()).  You do not need it to run this workflow:
+# stage 0 gives bit-identical output in this environment and in environment.yml (checked on synthetic data).
+# Recreate only if you want to re-derive the shared epochs file exactly as it was made.
+name: olfaction-eeg-original
+channels: [conda-forge]
+dependencies:
+  - python=3.9.0
+  - mne=1.8.0
+  - numpy=1.26.4
+  - scipy=1.13.1
+  - pandas=2.1.4
+  - h5py=3.12.1
+  - scikit-learn=1.5.2
+  - matplotlib=3.8.0
+  - nibabel=5.3.2

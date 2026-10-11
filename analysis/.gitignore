@@ -1,0 +1,17 @@
+# data and generated outputs are NOT committed (the data deposit is archived separately; see DEPOSIT.md)
+data/preprocessed/*
+!data/preprocessed/.gitkeep
+data/raw/
+deposit/
+results*/
+figures*/
+tests/data/
+.snakemake/
+# author-only notes: never commit
+NOTES_FOR_AUTHORS.md
+# python / editors / macOS
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+.DS_Store

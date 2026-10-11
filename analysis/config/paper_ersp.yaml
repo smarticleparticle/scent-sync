@@ -1,0 +1,26 @@
+# Run stages 2-4 (classification, habituation, Fig 4, Fig 5) from the paper's OWN ERSP files, without recomputing them.
+# Put copies of the three files at results_paper/ersp/ (names below), then:
+#   snakemake -c4 --configfile config/paper_ersp.yaml
+#
+#   phase_aligned_results_fullbreath_frontal_temporal_1deg_trials.npy  ->  results_paper/ersp/phase_aligned_fullbreath_1deg.npy
+#   timealigned_ersp_results_avgbreath.npy                             ->  results_paper/ersp/time_aligned_long.npy    (3.78 s)
+#   sniff_triggered_ersp_results_avgbreath.npy                         ->  results_paper/ersp/time_aligned_short.npy   (2 s)
+paths:
+  results: results_paper
+  figures: figures_paper
+pac:
+  run: false
+fooof:
+  run: false
+breath:
+  run: true
+timing:
+  run: false
+subject28:
+  run: true
+cluster_perm:
+  run: true
+fig3:
+  run: true
+fig1_resp:
+  run: false

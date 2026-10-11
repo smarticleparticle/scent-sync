@@ -1,0 +1,23 @@
+# NOTE: written without access to GitHub -- check the first run.
+name: tests
+on: [push, pull_request]
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: analysis/environment.yml
+          activate-environment: olfaction-eeg
+          miniforge-version: latest
+      - name: Unit tests
+        shell: bash -el {0}
+        working-directory: analysis
+        run: pytest -q tests
+      - name: Synthetic end-to-end smoke test (raw -> epochs -> ERSP -> all stages -> figures)
+        shell: bash -el {0}
+        working-directory: analysis
+        run: |
+          python tests/make_synthetic_raw.py tests/data/raw tests/data/preprocessed/info --n-trials 9
+          snakemake --configfile config/test.yaml -c2

@@ -1,0 +1,267 @@
+# Numbers PUBLISHED in the paper, used as regression targets (results/*/..._checks.csv).
+# Source of every block is given next to it.  Typed from the PDF draft of 10 Sep 2026 -- if a value
+# changes in the paper, change it here.  Tolerances reflect the rounding used in the paper.
+
+tolerance:
+  auc: 0.001          # AUCs are printed with 3 decimals
+  p: 0.002
+  pct_fig4a: 0.15     # Fig. 4A prints one decimal
+  pct_figS3: 1.0      # Fig. S3 prints integers
+
+# ---- Table S1: AUC by representation and binning strategy ---------------------------------------------
+table_s1:
+  peppermint:
+    traditional: {"1-bin (full)": 0.467, "2-bin": 0.696, "4-bin": 0.581}
+    longer:      {"1-bin (full)": 0.429, "2-bin": 0.325, "4-bin": 0.495}
+    rpl:         {"1-bin (full)": 0.414, "2-bin": 0.453, "4-bin": 0.785}
+  oregano:
+    traditional: {"1-bin (full)": 0.443, "2-bin": 0.495, "4-bin": 0.426}
+    longer:      {"1-bin (full)": 0.450, "2-bin": 0.484, "4-bin": 0.595}
+    rpl:         {"1-bin (full)": 0.388, "2-bin": 0.346, "4-bin": 0.671}
+  citrus:                                   # "grapefruit" in the paper
+    traditional: {"1-bin (full)": 0.554, "2-bin": 0.533, "4-bin": 0.557}
+    longer:      {"1-bin (full)": 0.478, "2-bin": 0.474, "4-bin": 0.613}
+    rpl:         {"1-bin (full)": 0.481, "2-bin": 0.508, "4-bin": 0.617}
+
+# ---- Table S4: paired permutation tests on decision-value gaps (FDR over the 6 comparisons) ---------------
+table_s4:
+  - {odor: peppermint, comparison: phase_vs_traditional, n: 16, observed_diff: 0.116, p_raw: 0.022, p_fdr: 0.044}
+  - {odor: peppermint, comparison: phase_vs_longer,      n: 16, observed_diff: 0.155, p_raw: 0.014, p_fdr: 0.044}
+  - {odor: oregano,    comparison: phase_vs_traditional, n: 17, observed_diff: 0.087, p_raw: 0.020, p_fdr: 0.044}
+  - {odor: oregano,    comparison: phase_vs_longer,      n: 17, observed_diff: 0.045, p_raw: 0.299, p_fdr: 0.448}
+  - {odor: citrus,     comparison: phase_vs_traditional, n: 16, observed_diff: 0.004, p_raw: 0.920, p_fdr: 0.933}
+  - {odor: citrus,     comparison: phase_vs_longer,      n: 16, observed_diff: 0.003, p_raw: 0.933, p_fdr: 0.933}
+
+# ---- Fig. 4A: selection frequency (%), mean over the 3 odors; rows Beta, Alpha, Theta; columns = 4 bins ------
+fig4a_phase:
+  - [0.0, 10.4, 35.4, 39.5]
+  - [0.0,  6.2, 100.0, 100.0]
+  - [64.7, 87.7, 35.2, 22.7]
+fig4a_time:                                  # Longer (3.78 s, 4-bin) ERSP
+  - [5.9, 5.9, 19.6, 9.8]
+  - [7.8, 9.8, 31.4, 7.8]
+  - [31.4, 98.0, 37.3, 70.6]
+
+# ---- Fig. S3: per-odor selection frequency (%); rows Beta, Alpha, Theta; columns = 4 phase bins -------------
+fig_s3:
+  peppermint: [[0, 0, 100, 100], [0, 0, 100, 100], [100, 100, 94, 31]]
+  oregano:    [[0, 0, 0, 6],     [0, 0, 100, 100], [94, 88, 12, 12]]
+  citrus:     [[0, 31, 6, 12],   [0, 19, 100, 100], [0, 75, 0, 25]]
+
+# ---- Section 1.7 / Fig. 5: habituation ----------------------------------------------------------------------
+habituation:
+  per_odor:        # n, delta AUC and FDR p from Section 1.7; AUCs (on subjects with BOTH blocks) from the Fig. 5 caption
+    peppermint: {n: 14, delta_auc: 0.327, p_fdr: 0.022, early_auc_common: 0.786, late_auc_common: 0.459}
+    oregano:    {n: 14, delta_auc: 0.255, p_fdr: 0.040, early_auc_common: 0.674, late_auc_common: 0.418}
+    citrus:     {n: 13, delta_auc: 0.249, p_fdr: 0.022, early_auc_common: 0.651, late_auc_common: 0.402}
+  pooled: {n: 41, delta_auc: 0.274, p_fdr_below: 0.001}
+  # Section 1.7: "alpha late exhale (270-360) dropped by 83%, theta late inhale (90-180) by 53%" (Fig. 5B convention)
+  selection_drop_pct: {alpha_p270_360: 83, theta_p90_180: 53}
+
+# ---- Section 1.1 / Fig. 2: respiration-EEG phase-amplitude coupling (n = 17) ------------------------------------------
+# whole-head p = FDR-corrected one-sided sign-flip permutation p (50,000 flips); d = one-sample Cohen's d of the subject z-scores
+pac:
+  n_subjects: 17
+  whole_head:
+    theta:     {p: 0.232, d: 0.19}
+    alpha:     {p: 0.043, d: 0.48}
+    beta:      {p: 0.043, d: 0.50}
+    low_gamma: {p: 0.011, d: 0.80}
+  clusters:                      # significant spatial clusters (p, number of channels), Fig. 2B
+    theta: []
+    alpha: [{p: 0.022, n: 23}, {p: 0.040, n: 18}]
+    beta: []
+    low_gamma: [{p: 0.001, n: 48}]
+
+# ---- Section 1.2 / Table S2 / Fig. S2: oscillatory basis of the PAC effects -------------------------------------------
+# peak prevalence at the default FOOOF setting (2.0 SD, 1-12 Hz peak width); gated results restrict each subject to channels
+# with a peak in the band (>= 20 channels needed).  p = FDR-corrected (assumed -- the checks will tell if the paper used raw p).
+fooof:
+  n_instances: 1974
+  peak_prevalence_pct: {alpha: 82.3, beta: 77.8, theta: 35.6, low_gamma: 32.4}
+  gated_default:
+    theta:     {n: 12, d: 0.15, p: 0.314}
+    alpha:     {n: 15, d: 0.48, p: 0.085}
+    beta:      {n: 16, d: 0.54, p: 0.083}
+    low_gamma: {n: 8,  d: 0.55, p: 0.109}
+  paired_gated_vs_all_p: {alpha: 0.092, beta: 0.288}
+  table_s2:                       # peak threshold (SD) -> band -> [Cohen's d, n subjects]
+    "1.5": {theta: [0.12, 13], alpha: [0.48, 15], beta: [0.50, 17], low_gamma: [0.88, 14]}
+    "2.0": {theta: [0.15, 12], alpha: [0.48, 15], beta: [0.54, 16], low_gamma: [0.55, 8]}
+    "2.5": {theta: [0.16, 9],  alpha: [0.52, 15], beta: [0.48, 14], low_gamma: [0.35, 6]}
+    "3.0": {theta: [0.47, 4],  alpha: [0.57, 13], beta: [0.47, 9],  low_gamma: [-1.58, 3]}
+  table_s2_beta_p_fdr_at_1_5: 0.049
+  aperiodic:                      # inhale minus exhale, two-sided sign-flip test
+    exponent: {d: 0.59, p: 0.029}
+    offset: {p: 0.124}
+
+# ---- Section 1.3 / Table S3: respiratory dynamics by condition (mean +- SD of per-subject means, n = 17) ---------------
+table_s3:
+  n_subjects: 17
+  means_sd:                        # condition: {inhale, exhale, breath: [mean, SD]} in seconds
+    water:      {inhale: [1.82, 0.26], exhale: [2.21, 0.30], breath: [4.03, 0.43]}
+    peppermint: {inhale: [1.82, 0.26], exhale: [2.32, 0.28], breath: [4.14, 0.49]}
+    oregano:    {inhale: [1.91, 0.38], exhale: [2.29, 0.41], breath: [4.19, 0.67]}
+    citrus:     {inhale: [1.92, 0.38], exhale: [2.24, 0.30], breath: [4.17, 0.49]}
+  anova:                           # repeated-measures ANOVA across the four conditions; F(3, 48)
+    inhale: {F: 1.96, p: 0.133, ng2: 0.023, df: [3, 48]}
+    exhale: {F: 0.54, p: 0.655, ng2: 0.015, df: [3, 48]}
+    breath: {F: 0.79, p: 0.507, ng2: 0.015, df: [3, 48]}
+
+# ---- Section 1.8 and SI 1.2-1.3: odor-arrival timing; SI Tables S5 (lag by subject) and S6 (flow-rate sensitivity) -----------
+timing:
+  transit_time_s: 1.096
+  transit_segments_s: {connector: 0.002, cannula: 1.094}
+  n_trials: 708
+  n_arrived_in_time: 703
+  n_late: 5
+  late_delays_s: [0.07, 0.07, 0.07, 0.07, 0.64]          # "four trials delayed by 0.07 s, one by 0.64 s"
+  median_margin_s: 1.19
+  p5_margin_s: 0.50
+  table_s5:                                              # subject: [mean lag (s), SD (s), n trials]
+    "22": [2.429, 0.665, 51]
+    "23": [3.169, 1.060, 16]
+    "24": [2.746, 1.316, 45]
+    "26": [1.992, 0.416, 45]
+    "27": [3.479, 1.499, 15]
+    "28": [2.474, 1.036, 3]
+    "29": [1.766, 0.283, 56]
+    "31": [1.960, 0.304, 56]
+    "32": [2.530, 0.623, 52]
+    "33": [2.809, 0.601, 35]
+    "34": [3.036, 0.944, 46]
+    "35": [2.440, 0.603, 54]
+    "36": [2.942, 1.132, 51]
+    "37": [2.867, 0.652, 39]
+    "38": [2.275, 1.025, 52]
+    "39": [2.447, 0.666, 47]
+    "40": [2.540, 1.062, 45]
+  table_s6:                                              # assumed flow-rate error (%): [flow L/min, transit s, trials late, % odor present]
+    "-25": [0.3075, 1.462, 19, 97.32]
+    "-20": [0.3280, 1.370, 19, 97.32]
+    "-15": [0.3485, 1.290, 11, 98.45]
+    "-10": [0.3690, 1.218, 8, 98.87]
+    "-5":  [0.3895, 1.154, 8, 98.87]
+    "0":   [0.4100, 1.096, 5, 99.29]
+    "5":   [0.4305, 1.044, 5, 99.29]
+    "10":  [0.4510, 0.997, 1, 99.86]
+    "15":  [0.4715, 0.953, 1, 99.86]
+    "20":  [0.4920, 0.914, 1, 99.86]
+    "25":  [0.5125, 0.877, 1, 99.86]
+
+# ---- SI Section 1.4 and SI Table S7: subject-28 sensitivity ---------------------------------------------------------------
+# table_s7: [AUC with subject 28, AUC without, delta]  (SI Table S7; the text says |delta| < 0.005)
+# spearman: breathing rate vs % trials kept (SI 1.4: r = 0.43, p = 0.082; without subject 28 r = 0.31, p = 0.24)
+# notebook_cell52_table: typed from the OUTPUT saved in analysis-notebook cell 52 (not printed in the paper):
+#   subject: [mean first-breath duration (s), breaths per 16 s, trials attempted, trials kept, % kept]
+subject28:
+  table_s7:
+    peppermint: [0.785, 0.785, 0.000]
+    oregano:    [0.671, 0.672, 0.001]
+    citrus:     [0.617, 0.613, -0.004]
+  max_abs_delta_auc: 0.005
+  spearman:
+    all:     {r: 0.43, p: 0.082}
+    without: {r: 0.31, p: 0.24}
+  pct_kept_28: 53.7            # = 22/41 under the FIRST-BREATH criterion (>= 2 cycles)
+  attempted_28: 41
+  rejected_28: 36              # under the ERSP quality control (>= 3 cycles), of which 5 are valid
+  valid_28_ersp_qc: 5
+  rejected_with_0_or_1_cycles: 18
+  would_pass_at_2_cycles: 18
+  notebook_cell52_table:
+    "28": [5.018182, 3.188406, 41, 22, 53.658537]
+    "23": [4.951158, 3.231567, 42, 38, 90.476190]
+    "27": [4.943684, 3.236453, 43, 38, 88.372093]
+    "38": [4.277185, 3.740778, 27, 27, 100.0]
+    "37": [4.237488, 3.775822, 48, 43, 89.583333]
+    "32": [4.125000, 3.878788, 52, 52, 100.0]
+    "39": [4.065273, 3.935775, 45, 44, 97.777778]
+    "36": [4.065191, 3.935854, 47, 47, 100.0]
+    "26": [4.020455, 3.979650, 44, 44, 100.0]
+    "24": [4.014444, 3.985608, 58, 54, 93.103448]
+    "34": [3.989760, 4.010266, 50, 50, 100.0]
+    "22": [3.950979, 4.049630, 47, 47, 100.0]
+    "33": [3.922133, 4.079413, 50, 45, 90.0]
+    "40": [3.854545, 4.150943, 47, 44, 93.617021]
+    "35": [3.702431, 4.321485, 51, 51, 100.0]
+    "31": [3.699347, 4.325088, 49, 49, 100.0]
+    "29": [3.535111, 4.526025, 55, 54, 98.181818]
+
+# ---- Section 1.5 / SI Fig. S4: cluster-based permutation tests (best cluster per run and band) --------------------------
+# Paper (text, Fig. S4): Longer / time-locked theta p = 0.028 (1714 px), alpha p = 0.499 (70 px); phase-locked theta p = 0.343 (147 px),
+# alpha p = 0.047 (326 px).  The 4-decimal p-values (and the traditional-2s run, the sensitivity runs and the colour scale |t| max = 3.702) are
+# typed from the saved OUTPUT of analysis-notebook cells 124, 125, 127 and 128 (the paper prints 3 decimals).
+cluster_perm:
+  p_tol: 0.0006
+  global_vmax: 3.702
+  runs:
+    1_traditional_2s: {theta: {p: 0.6464}, alpha: {p: 1.0}}
+    2_longer_5050:    {theta: {p: 0.0280, n_pixels: 1714}, alpha: {p: 0.4985, n_pixels: 70}}
+    3_phase_locked:   {theta: {p: 0.3427, n_pixels: 147},  alpha: {p: 0.0470, n_pixels: 326}}
+  sensitivity:                      # wider bands, phase-locked (notebook cells 124-125)
+    theta_3_9_inhale:        {p: 0.3876}
+    alpha_beta_7_13_exhale:  {p: 0.0579}
+
+# ---- Fig. 3 (analysis-notebook cell 60) ----------------------------------------------------------------------------------
+# No numbers are printed in the paper's Fig. 3; these are the values saved in the notebook's cell-60 output (colour limits of panels B-C and D-E,
+# 99th percentile of |difference|) and the figure's own n = 17 / example subjects 33 and 40 (shown as "Subject 1" and "Subject 2").
+fig3:
+  clim_tol: 0.0006
+  vmax_subj: 0.682
+  vmax_grand: 0.131
+  n_grand: 17
+  subjects_individual: ["33", "40"]
+
+# ---- SI Fig. S2: the subject / channel shown in each panel (titles of the printed figure) ------------------------------------
+fig_s2:
+  examples:
+    theta_peak:      ["23", "E3"]
+    theta_nopeak:    ["32", "E111"]
+    alpha_peak:      ["22", "E1"]
+    alpha_nopeak:    ["29", "E14"]
+    beta_peak:       ["33", "E58"]
+    beta_nopeak:     ["22", "E70"]
+    low_gamma_peak:  ["34", "E5"]
+    low_gamma_nopeak: ["32", "E99"]
+
+# ---- Section 1.6 / Fig. 4C-D / SI 3.1: free-response identification --------------------------------------------------------
+# Paper: means +- SD (Section 1.6), Fig. 4C example ("mint": 0.625, 0.636, 0.630), p < 0.05 / p < 0.001 / p = 0.276 (Fig. 4D caption), SI 3.1 correlations
+# and descriptor counts.  The unrounded p-values, t-tests, the profile numbers and the overall figures are typed from the SAVED OUTPUT of the preprocessing
+# notebook (cells 22, 24, 25, 26, 30), where the paper prints only inequalities.
+word_scoring:
+  tol: 0.0006
+  odor_mean_sd:                      # [mean, SD]; n = 17 subjects each
+    peppermint: [0.572, 0.213]
+    oregano:    [0.295, 0.353]
+    grapefruit: [0.178, 0.257]
+  overall: {mean: 0.348, sd: 0.321, n_ge_070: 6, n_ge_050: 22}
+  permutation_p:                     # unpaired permutation test, 10,000 permutations, seed 0 (notebook cell 22)
+    peppermint_vs_oregano:    {diff: 0.277, p: 0.0100}
+    peppermint_vs_grapefruit: {diff: 0.394, p: 0.0001}
+    oregano_vs_grapefruit:    {diff: 0.117, p: 0.2760}
+  paired_t:                          # paired t-tests behind the stars of Fig. 4D (notebook cell 26)
+    peppermint_vs_oregano:    {t: 2.695, p: 0.0159, d: 0.654}
+    peppermint_vs_grapefruit: {t: 5.705, p: 0.0000, d: 1.384}
+    oregano_vs_grapefruit:    {t: 1.032, p: 0.3175, d: 0.250}
+  fig4c: {empirical: 0.625, cosine: 0.636, final: 0.630}
+  descriptor_counts: {mean_descriptors: 1.18, pct_exactly_one_descriptor: 81.8}
+  si31:
+    peppermint: {n: 16, r: 0.128, p: 0.638}
+    oregano:    {n: 17, r: 0.077, p: 0.768}
+    citrus:     {n: 16, r: 0.205, p: 0.447}
+    pooled:     {n: 49, r: 0.126, p: 0.390}
+  empirical_profile:                 # GoodScents descriptor frequencies (notebook cell 24 output)
+    peppermint: {n_unique: 20, top: {minty: 0.625, mentholic: 0.500, cooling: 0.375, peppermint: 0.250}}
+    grapefruit: {n_unique: 9,  top: {herbal: 0.667, minty: 0.667, citrus: 0.667, clean: 0.333}}
+    oregano:    {n_unique: 13, top: {herbal: 1.000, spicy: 0.750, smoky: 0.500, camphoreous: 0.500}}
+  combined_profile_peppermint:       # all-mpnet-base-v2 scores (notebook cell 25 output)
+    minty: 0.609
+    mint: 0.630
+    mentholic: 0.402
+    cooling: 0.312
+    peppermint: 0.625
+    tobacco: 0.330
+    spearmint: 0.445
+    toothpaste: 0.286
+    gum: 0.252

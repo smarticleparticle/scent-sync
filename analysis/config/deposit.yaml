@@ -1,0 +1,12 @@
+# Reproduce the paper from the DATA DEPOSIT (no raw EEG, no continuous EEG needed):
+#
+#   1. put the deposit files in data/preprocessed/ (see DEPOSIT.md; `python scripts/verify_data.py` checks them)
+#   2. snakemake --configfile config/deposit.yaml -c4 --keep-going
+#
+# Only differences from config/config.yaml: the PAC results ship in the slimmed form (per-surrogate arrays dropped), and the free-response
+# analysis (needs `pip install sentence-transformers` and a one-time model download) is switched on.  To skip that last stage:
+#   snakemake --configfile config/deposit.yaml config/no_word_scoring.yaml -c4
+paths:
+  pac_results: data/preprocessed/pac_results_slim.npy
+word_scoring:
+  run: true
