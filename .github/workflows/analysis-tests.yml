@@ -6,6 +6,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Point the editable install in environment.yml at the analysis/ folder
+        run: sed -i 's#- -e \.$#- -e ./analysis#' analysis/environment.yml
       - uses: conda-incubator/setup-miniconda@v3
         with:
           environment-file: analysis/environment.yml
