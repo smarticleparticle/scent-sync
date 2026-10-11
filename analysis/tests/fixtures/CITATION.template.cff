@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use this code or data, please cite the paper and the data deposit."
+title: "Analysis code for: Respiratory Phase Orchestrates Human Olfactory Cortical Dynamics"
+type: software
+authors:
+  - family-names: Hathaway
+    given-names: Alisa Y.
+    affiliation: "Department of Electrical Engineering, Stanford University"
+  - family-names: Coleman
+    given-names: Todd P.
+    affiliation: "Department of Bioengineering, Stanford University"
+repository-code: "https://github.com/TODO/TODO"          # TODO: repository URL
+# doi: "TODO"                                              # TODO: DOI of the archived release (e.g. Zenodo)
+# license: TODO                                            # TODO: SPDX identifier, e.g. MIT
+preferred-citation:
+  type: article
+  title: "Respiratory Phase Orchestrates Human Olfactory Cortical Dynamics"
+  authors:
+    - family-names: Hathaway
+      given-names: Alisa Y.
+    - family-names: Coleman
+      given-names: Todd P.
+  journal: "Proceedings of the National Academy of Sciences"
+  # doi: "TODO"                                            # TODO: paper DOI
+  year: 2026

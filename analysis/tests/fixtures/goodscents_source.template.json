@@ -1,0 +1,13 @@
+{
+  "source": "pyrfume-data/goodscents",
+  "ref": "8054ea98ed675005ec10e67359902f500e4911b0",
+  "n_rows_merged": 4626,
+  "sha256": {
+    "molecules.csv": "0d9bd38c54a40a051ae7b771d51f11ac1fcf021e0369fc53583e5f634e6e8bb4",
+    "behavior.csv": "18968aa66cab974ee2f942ad0abd0875ccf2bcc9501c1cb306a54bd639a22219",
+    "stimuli.csv": "356cdd74a859ab1e8e061952dbb21587afc8981bb460cc670481d688afac923f"
+  },
+  "retrieved": "2026-10-09",
+  "note": "Files downloaded from the main branch of pyrfume-data on 2026-10-09; at commit 8054ea98ed675005ec10e67359902f500e4911b0 the three files have exactly the SHA-256 below, and with them the search reproduces the profiles printed in the analysis notebook (4626 merged rows; 8 / 3 / 4 molecules). Rebuild with: python scripts/make_goodscents_subset.py --ref 8054ea98ed675005ec10e67359902f500e4911b0 --out config/goodscents_selected.csv",
+  "commit": "8054ea98ed675005ec10e67359902f500e4911b0"
+}

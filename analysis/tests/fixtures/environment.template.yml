@@ -1,0 +1,33 @@
+# Main environment: every stage, from the data deposit (config/deposit.yaml) to the synthetic smoke test.
+#
+# WHY THE SCIENTIFIC PACKAGES COME FROM PIP, NOT CONDA: the paper's numbers were produced with the pip wheels (on Apple silicon: numpy / scipy linked
+# against Apple's Accelerate).  With the conda-forge builds of the same versions, FOOOF's curve fits differ in the 5th-6th digit, which flips two
+# borderline channels and moves one published number (beta, gated vs all-channel PAC, paired p: 0.282 instead of 0.288; all other checks agree).
+# Conda therefore only provides Python itself.  On other platforms (e.g. Linux, OpenBLAS) a few FOOOF-based numbers may likewise shift in the last digit.
+#
+# Versions follow the author's `pig` environment (mne.sys_info()): Python 3.13.11, numpy 2.4.4, scipy 1.17.1, scikit-learn 1.8.0, pandas 3.0.3,
+# matplotlib 3.10.9, mne 1.12.1, fooof 1.1.1.  Entries without a pin are not version-sensitive; the versions of a real run are written to results/versions.txt.
+name: olfaction-eeg
+channels: [conda-forge]
+dependencies:
+  - python=3.13
+  - pip
+  - pip:
+      - numpy==2.4.4
+      - scipy==1.17.1
+      - pandas==3.0.3
+      - scikit-learn==1.8.0
+      - matplotlib==3.10.9
+      - mne==1.12.1
+      - fooof==1.1.1          # deprecated in favour of specparam; keep the version used for the paper
+      - h5py
+      - pywavelets
+      - pyyaml
+      - snakemake>=8
+      - fire
+      - statsmodels           # only used by the unit tests (cross-checks the FDR implementation)
+      - pytest
+      - sentence-transformers==6.1.0   # free-response analysis (Fig. 4C/D); versions as recorded in results/word_scoring/embedding_versions.json
+      - transformers==5.19.0
+      - torch==2.14.1
+      - -e .

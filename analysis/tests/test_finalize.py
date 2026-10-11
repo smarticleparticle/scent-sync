@@ -6,11 +6,21 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(__file__))
-FILES = ["README.md", "CITATION.cff", "DEPOSIT.md", "environment.yml", "config/goodscents_selected_source.json"]
+FIX = os.path.join(os.path.dirname(__file__), "fixtures")
+# fixture name -> relative path in the temporary release tree
+FILES = {"README.template.md": "README.md", "CITATION.template.cff": "CITATION.cff", "DEPOSIT.template.md": "DEPOSIT.md",
+         "environment.template.yml": "environment.yml", "goodscents_source.template.json": "config/goodscents_selected_source.json"}
+
+
+def make_tree(tmp_path):
+    """A pristine (not yet finalized) release tree, built from the fixtures."""
+    for src, dst in FILES.items():
+        os.makedirs(os.path.dirname(tmp_path / dst), exist_ok=True)
+        shutil.copy(os.path.join(FIX, src), tmp_path / dst)
 
 
 def find(f):
-    """CITATION.cff sits at the top level of a larger repository when this code lives in a subfolder (see scripts/place_in_monorepo.py)."""
+    """The live file (CITATION.cff sits at the top level of a larger repository when this code lives in a subfolder; see scripts/place_in_monorepo.py)."""
     here = os.path.join(ROOT, f)
     return here if os.path.exists(here) else os.path.join(os.path.dirname(ROOT), f)
 
@@ -20,9 +30,7 @@ def run(tmp, *args):
 
 
 def test_finalize_fills_everything(tmp_path):
-    for f in FILES:
-        os.makedirs(os.path.dirname(tmp_path / f), exist_ok=True)
-        shutil.copy(find(f), tmp_path / f)
+    make_tree(tmp_path)
     (tmp_path / "versions.txt").write_text("python      3.13.11  (x)\nh5py        3.15.1\npywt        1.9.0\nyaml        6.0.3\nfire        0.7.1\nstatsmodels 0.14.5\nsnakemake   9.27.0\n")
     dry = run(tmp_path, "--license", "MIT", "--holder", "A B", "--repo-url", "https://github.com/u/r")
     assert dry.returncode == 0 and "DRY RUN" in dry.stdout and not (tmp_path / "LICENSE").exists()
@@ -44,9 +52,7 @@ def test_finalize_fills_everything(tmp_path):
 
 
 def test_forthcoming_paper_doi(tmp_path):
-    for f in FILES:
-        os.makedirs(os.path.dirname(tmp_path / f), exist_ok=True)
-        shutil.copy(find(f), tmp_path / f)
+    make_tree(tmp_path)
     r = run(tmp_path, "--license", "BSD-3-Clause", "--holder", "X", "--repo-url", "https://github.com/u/r", "--paper-doi", "forthcoming",
             "--data-doi", "10.5281/zenodo.1", "--apply")
     assert r.returncode == 0 and "No TODO placeholders left" in r.stdout, r.stdout
@@ -54,9 +60,7 @@ def test_forthcoming_paper_doi(tmp_path):
 
 
 def test_cc_by_nc_license_text_is_written(tmp_path):
-    for f in FILES:
-        os.makedirs(os.path.dirname(tmp_path / f), exist_ok=True)
-        shutil.copy(find(f), tmp_path / f)
+    make_tree(tmp_path)
     r = run(tmp_path, "--license", "CC-BY-NC-4.0", "--holder", "Alisa Y. Hathaway", "--data-license", "CC-BY-NC-4.0", "--repo-url", "https://github.com/u/r",
             "--paper-doi", "forthcoming", "--data-doi", "10.5281/zenodo.1", "--apply")
     assert r.returncode == 0, r.stderr
@@ -64,3 +68,16 @@ def test_cc_by_nc_license_text_is_written(tmp_path):
     assert "Copyright (c)" in text and "Alisa Y. Hathaway" in text and "Attribution-NonCommercial 4.0 International" in text and len(text) > 15000
     assert "license: CC-BY-NC-4.0" in (tmp_path / "CITATION.cff").read_text()
     assert "CC-BY-NC-4.0 (code), CC-BY-NC-4.0 (data deposit)" in (tmp_path / "README.md").read_text()
+
+
+def test_placeholders_match_the_script_patterns():
+    """Before release only: the live README / CITATION.cff still contain the placeholder sentences finalize_release.py replaces.  Skipped once they are finalized."""
+    readme = open(find("README.md"), encoding="utf-8").read()
+    if "https://github.com/TODO/TODO.git" not in readme:                     # finalize_release.py has already been applied (fully or partly)
+        import pytest
+        pytest.skip("README.md is already finalized")
+    for pattern in ("PNAS (2026). DOI: `TODO`", "(DOI: `TODO`; contents", "git clone https://github.com/TODO/TODO.git && cd TODO",
+                    "Please cite the paper (DOI `TODO`)", "and the data deposit (DOI `TODO`)", "License: `TODO`."):
+        assert pattern in readme, pattern
+    cff = open(find("CITATION.cff"), encoding="utf-8").read()
+    assert 'repository-code: "https://github.com/TODO/TODO"' in cff and "# license: TODO" in cff

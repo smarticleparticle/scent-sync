@@ -207,7 +207,7 @@ def main():
         print("  note:", n)
     left = []
     for dp, _, fs in os.walk(R):
-        if any(x in dp for x in (".git", "__pycache__", "tests/data")):
+        if any(x in dp for x in (".git", "__pycache__", "tests/data", "tests/fixtures")):
             continue
         for f in fs:
             if f.endswith((".md", ".cff", ".yml", ".yaml", ".json", ".py")) and f not in ("NOTES_FOR_AUTHORS.md", "finalize_release.py", "test_finalize.py"):
