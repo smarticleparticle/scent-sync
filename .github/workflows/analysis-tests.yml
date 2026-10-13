@@ -5,7 +5,11 @@ jobs:
   pytest:
     runs-on: ubuntu-latest
     steps:
+      - name: Free disk space (the hosted runner is small)
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
       - uses: actions/checkout@v4
+      - name: Leave out the language-model packages in CI (several GB; the tests use a stand-in model)
+        run: sed -i -e '/- sentence-transformers==/d' -e '/- transformers==/d' -e '/- torch==/d' analysis/environment.yml
       - uses: conda-incubator/setup-miniconda@v3
         with:
           environment-file: analysis/environment.yml
