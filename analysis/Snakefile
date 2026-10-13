@@ -147,7 +147,7 @@ if WS["run"]:
 if FIG3["run"]:
     ALL_TARGETS += [f"{FIG}/fig3_ersps.pdf"]
 if FIG1["run"]:
-    ALL_TARGETS += [f"{FIG}/fig1_respiration_example.pdf"]
+    ALL_TARGETS += [f"{FIG}/fig1_respiration_example.pdf", f"{FIG}/fig1.svg"]
 if CLUSTER["run"]:
     ALL_TARGETS += [f"{RES}/cluster_perm/cluster_perm_summary.csv", f"{FIG}/figS4_cluster_perm.pdf"]
 if PAC["run"]:
@@ -661,3 +661,18 @@ rule word_scoring:
     shell:
         "python scripts/run_word_scoring.py --params {input.params} --out-dir {params.outdir} --fig-dir {params.figdir} "
         "--neural-predictions {input.neural} {params.strict} > {log} 2>&1"
+
+
+rule fig1_figure:
+    """Fig. 1 for the journal: the hand-made illustration (figure_sources/) + the respiration trace, composed as one 180 x 96 mm vector figure (SVG; PDF / EPS / PNG too if Inkscape or CairoSVG is available)."""
+    input:
+        trial=FIG1["trial_file"],
+        left="figure_sources/figure1_left_infographic.svg",
+        code=["scripts/make_fig1.py", "src/olfaction_eeg/fig1_compose.py"],
+    output:
+        f"{FIG}/fig1.svg",
+    params:
+        prefix=f"{FIG}/fig1",
+        idx=FIG1["trial_idx"],
+    shell:
+        "python scripts/make_fig1.py --left-svg {input.left} --trial-file {input.trial} --trial-idx {params.idx} --out-prefix {params.prefix}"
