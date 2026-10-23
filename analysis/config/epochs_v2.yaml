@@ -1,0 +1,8 @@
+# Run the whole workflow from the v2 epochs file instead of the original, WITHOUT touching the main results:
+#   snakemake --configfile config/epochs_v2.yaml -c3
+# Everything is written to results_v2/ and figures_v2/ (the default run keeps using results/ and figures/).
+paths:
+  epochs: data/preprocessed/epochs_eeg_respiration_withtimestamps_v2.npy
+  epochs_rebuilt: data/preprocessed/epochs_eeg_respiration_withtimestamps_v2.npy
+  results: results_v2
+  figures: figures_v2

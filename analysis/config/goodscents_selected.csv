@@ -1,0 +1,16 @@
+odor,rank,name,cid,descriptors
+peppermint,0,menthol,1254,mentholic;cooling;minty
+peppermint,1,(+)-menthol,165675,mentholic
+peppermint,2,l-menthol,16666,mentholic;peppermint;cooling;minty
+peppermint,3,isomintlactone,94349,sweet;spearmint;coconut;powdery;creamy;tobacco;coumarinic;tonka
+peppermint,4,dihydromintlactone,14344497,gourmand;tobacco;phenolic;coumarinic;tonka;lactonic
+peppermint,5,(+)-isomenthone,70962,minty
+peppermint,6,(-)-menthone,26447,sweet;anise;mentholic;herbal;camphoreous;cooling;fresh;green;peppermint;minty
+peppermint,7,isomenthone,6432469,minty
+grapefruit,0,limonene oxide,91496,clean;spearmint;herbal;fresh;minty;citrus
+grapefruit,1,limonene,22311,camphoreous;herbal;terpenic;citrus
+grapefruit,2,"limonene oxide, (-)-",10953718,minty;cool
+oregano,0,carvacrol,10364,spicy;herbal;smoky;camphoreous;cooling;woody;thyme
+oregano,1,carvacrol methyl ether,80790,herbal;spicy;citrus;leafy
+oregano,2,thymol methyl ether,14104,burnt;herbal;smoky;woody
+oregano,3,thymol,6989,chemical;spicy;medicinal;herbal;camphoreous;phenolic;thyme

@@ -1,0 +1,669 @@
+# =============================================================================
+# Respiratory-phase-locked EEG responses to odors -- reproducible workflow
+#
+#   snakemake -n               # dry run: show what would be executed
+#   snakemake -c4              # run everything with 4 cores
+#   snakemake --dag | dot -Tpdf > dag.pdf
+#   snakemake --configfile config/test.yaml -c2   # synthetic-data smoke test
+#
+# EXPENSIVE STEPS ARE GUARDED.  make_epochs, make_full_recordings, ersp_*, pac_compute and recordings_meta wrap all their
+# inputs in ancient(): they run only when their OUTPUT IS MISSING (or when forced:  snakemake --forcerun <rule>), never merely
+# because a code file or a downloaded data file has a newer timestamp.  This is what lets someone who downloads the data
+# deposit (which already contains such outputs) regenerate the figures without triggering hours of recomputation.
+# Cheap steps (classification, habituation, statistics, figures) track their inputs and code normally.
+#
+# NOTE: every rule lists the code it runs under `code=` so that editing a script or a module in src/
+# re-runs the affected steps (Snakemake cannot see inside `python scripts/x.py` otherwise).
+#
+# Stages (more are added as the notebooks are ported):
+#   0. epochs          raw EEGLAB .mat + olfactometer CSV -> epochs (+ continuous recordings)  [needs raw data]
+#   1. ersp            epochs               ->  phase-aligned, 3.78-s and 2-s time-aligned ERSPs
+#   2. classification  ERSPs                ->  Table S1/S4, Fig. 4A/B + S3 data, predictions for the word analysis
+#   3. habituation     phase ERSP           ->  early-vs-late AUCs, FDR p-values, Fig. 5 data
+#   4. figures         results              ->  Fig. 4A/B, Fig. S3, Fig. 5
+#   5. PAC             continuous recordings -> respiration-EEG coupling (SLOW), group stats, Fig. 2   [pac.run: true]
+#   8. timing          v2 epochs + continuous respiration -> odor-arrival timing, Tables S5-S6          [timing.run: true]
+#   7. breath stats    original epochs -> breath durations by condition, Table S3                      [breath.run: true]
+#   9. subject 28      original epochs + phase ERSP -> SI 1.4 (retention vs breathing rate), Table S7        [subject28.run: true]
+#  10. cluster perm.  3 ERSP files -> Section 1.5 cluster tests (theta / alpha), Fig. S4                         [cluster_perm.run: true]
+#  11. Fig. 3         3 ERSP/epochs files -> Fig. 3 (schematic, two subjects, grand averages)                         [fig3.run: true]
+#  12. Fig. 1 trace   raw respiration -> example trace of Fig. 1 (right panel); the small snippet file is deposited   [fig1_resp.run: true]
+#  13. Fig. S2         spectra cache -> example FOOOF fits with / without a peak                                      [fooof.run: true]
+#  14. word scoring    free responses + GoodScents + word embeddings -> Fig. 4C/D, Section 1.6, SI 3.1                  [word_scoring.run: true]
+#   6. FOOOF gating    PAC results + spectra -> Section 1.2, Table S2                                  [fooof.run: true]
+# =============================================================================
+import os
+import yaml
+
+configfile: "config/config.yaml"
+
+P = config["paths"]
+RES = P["results"]
+FIG = P["figures"]
+CLS = config["classification"]
+HAB = config["habituation"]
+PAC = config["pac"]
+FOOOF = config["fooof"]
+BREATH = config["breath"]
+TIMING = config["timing"]
+PAPER = yaml.safe_load(open(P["paper_values"])) if config["checks"]["enabled"] else {}
+SUBJ28 = config["subject28"]
+CLUSTER = config["cluster_perm"]
+FIG3 = config["fig3"]
+FIG1 = config["fig1_resp"]
+WS = config["word_scoring"]
+SUBJECTS = config["subjects"]["normosmia"]
+REC = config["recordings"]
+
+
+# --------------------------------------------------------------------------- parameter files
+# The exact parameters of each stage are written to results/<stage>/params.yaml when the workflow is parsed (only if the
+# content changed, so unchanged parameters keep their timestamp).  They are ordinary input files without a producing job:
+# a fresh checkout therefore never re-triggers an expensive step merely because a params file had to be created.
+def write_params(path, content):
+    text = yaml.safe_dump(content, sort_keys=False)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    if not (os.path.exists(path) and open(path).read() == text):
+        with open(path, "w") as f:
+            f.write(text)
+
+
+write_params(f"{RES}/recordings/params.yaml", {
+    "subjects": SUBJECTS,
+    "eeglab_fmt": P["raw_eeglab"],
+    "csv_fmt": P["raw_olfactometer"],
+    "cfg": {
+        "tmin": REC["tmin"], "tmax": REC["tmax"], "resp_sfreq": REC["resp_sfreq"],
+        "resp_clip": REC["resp_clip"], "minmax_smooth_window": REC["minmax_smooth_window"],
+        "csv_drop_first_rows": REC["csv_drop_first_rows"],
+        "bad_channels": REC["bad_channels"],
+        "offsets": REC["eeg_resp_offset_samples"],
+        "drop_last_kept_epoch": REC["corrections"]["drop_last_kept_epoch"],
+        "shift_kept_indices": REC["corrections"]["shift_kept_indices"],
+        "drop_first_trial": REC["corrections"]["drop_first_trial"],
+    },
+})
+write_params(f"{RES}/classification/params.yaml", {
+    **{k: CLS[k] for k in ["C", "trial_start", "trial_end", "seed", "phase_strategies", "phase_main_strategy",
+                           "time_strategies_2s", "time_strategies_378s", "time_378s_comparison_strategy", "gap_test"]},
+    "odors": config["odors"], "normosmia": config["subjects"]["normosmia"], "paper": PAPER,
+    "checks_enabled": config["checks"]["enabled"],
+})
+write_params(f"{RES}/habituation/params.yaml", {
+    "C": CLS["C"], "phase_strategies": CLS["phase_strategies"], "phase_main_strategy": CLS["phase_main_strategy"],
+    "habituation": HAB, "odors": config["odors"], "normosmia": config["subjects"]["normosmia"],
+    "paper": PAPER, "checks_enabled": config["checks"]["enabled"],
+})
+write_params(f"{RES}/timing/params.yaml", {
+    "timing": TIMING, "paper": PAPER, "checks_enabled": config["checks"]["enabled"],
+})
+write_params(f"{RES}/breath/params.yaml", {
+    "normosmia": config["subjects"]["normosmia"], "paper": PAPER, "checks_enabled": config["checks"]["enabled"],
+})
+write_params(f"{RES}/subject28/params.yaml", {
+    "subject28": SUBJ28, "odors": config["odors"], "normosmia": config["subjects"]["normosmia"], "paper": PAPER,
+    "checks_enabled": config["checks"]["enabled"],
+})
+write_params(f"{RES}/cluster_perm/params.yaml", {
+    "cluster_perm": CLUSTER, "odors": config["odors"], "normosmia": config["subjects"]["normosmia"], "paper": PAPER,
+    "checks_enabled": config["checks"]["enabled"],
+})
+write_params(f"{RES}/fig3/params.yaml", {
+    "fig3": FIG3, "odors": config["odors"], "normosmia": config["subjects"]["normosmia"], "paper": PAPER,
+    "checks_enabled": config["checks"]["enabled"],
+})
+write_params(f"{RES}/fig1/params.yaml", {"offsets": REC["eeg_resp_offset_samples"]})
+write_params(f"{RES}/word_scoring/params.yaml", {
+    "word_scoring": WS, "paper": PAPER, "checks_enabled": config["checks"]["enabled"],
+})
+write_params(f"{RES}/fooof/params.yaml", {
+    "fooof": FOOOF, "pac": PAC, "normosmia": config["subjects"]["normosmia"], "paper": PAPER,
+    "checks_enabled": config["checks"]["enabled"],
+})
+write_params(f"{RES}/pac/params.yaml", {
+    "pac": PAC, "normosmia": config["subjects"]["normosmia"], "paper": PAPER,
+    "checks_enabled": config["checks"]["enabled"],
+})
+
+
+ALL_TARGETS = [
+    f"{RES}/classification/classification_summary.csv",
+    f"{RES}/habituation/habituation_summary.csv",
+    f"{FIG}/fig4_AB_classification.pdf",
+    f"{FIG}/figS3_per_odor_selection.pdf",
+    f"{FIG}/fig5_habituation.pdf",
+    f"{RES}/versions.txt",
+]
+if TIMING["run"]:
+    ALL_TARGETS += [f"{RES}/timing/table_S6_flow_sensitivity.csv"]
+if BREATH["run"]:
+    ALL_TARGETS += [f"{RES}/breath/table_S3_anova.csv"]
+if SUBJ28["run"]:
+    ALL_TARGETS += [f"{RES}/subject28/table_S7.csv"]
+if PAC["run"] and FOOOF["run"]:
+    ALL_TARGETS += [f"{FIG}/figS2_fooof_examples.pdf"]
+if WS["run"]:
+    ALL_TARGETS += [f"{RES}/word_scoring/behavior_tests.csv", f"{FIG}/fig4CD_recognition.pdf"]
+if FIG3["run"]:
+    ALL_TARGETS += [f"{FIG}/fig3_ersps.pdf"]
+if FIG1["run"]:
+    ALL_TARGETS += [f"{FIG}/fig1_respiration_example.pdf", f"{FIG}/fig1.pdf"]
+if CLUSTER["run"]:
+    ALL_TARGETS += [f"{RES}/cluster_perm/cluster_perm_summary.csv", f"{FIG}/figS4_cluster_perm.pdf"]
+if PAC["run"]:
+    ALL_TARGETS += [f"{FIG}/fig2_pac.pdf", f"{RES}/pac/pac_group_stats.csv"]
+    if FOOOF["run"]:
+        ALL_TARGETS += [f"{RES}/fooof/table_S2_long.csv"]
+
+
+rule all:
+    input:
+        ALL_TARGETS,
+
+
+rule versions:
+    """Record the software versions used, next to the results."""
+    output:
+        f"{RES}/versions.txt",
+    shell:
+        "python scripts/print_versions.py {output} > /dev/null"
+
+
+# --------------------------------------------------------------------------- 0. raw -> epochs
+rule make_epochs:
+    """Raw EEGLAB-preprocessed EEG + olfactometer humidity -> epochs (EEG, respiration, timestamps)."""
+    input:
+        mats=ancient(expand(P["raw_eeglab"], subject=SUBJECTS)),
+        csvs=ancient(expand(P["raw_olfactometer"], subject=SUBJECTS)),
+        params=ancient(f"{RES}/recordings/params.yaml"),
+        code=ancient(["scripts/make_epochs.py", "src/olfaction_eeg/recordings.py"]),
+    output:
+        P["epochs_rebuilt"],
+    log:
+        f"{RES}/logs/make_epochs.log",
+    shell:
+        "python scripts/make_epochs.py --params {input.params} --out {output} > {log} 2>&1"
+
+
+rule make_full_recordings:
+    """Continuous aligned EEG + respiration.  kind=v2 (z-scored; timing) or humidity (min-max; PAC).
+    Not needed by stages 1-2; request explicitly:  snakemake recordings"""
+    input:
+        mats=ancient(expand(P["raw_eeglab"], subject=SUBJECTS)),
+        csvs=ancient(expand(P["raw_olfactometer"], subject=SUBJECTS)),
+        params=ancient(f"{RES}/recordings/params.yaml"),
+        code=ancient(["scripts/make_full_recordings.py", "src/olfaction_eeg/recordings.py"]),
+    output:
+        P["full_recordings_dir"] + "/full_respiration_EEG_{kind}.npy",
+    wildcard_constraints:
+        kind="v2|humidity",
+    params:
+        variant=lambda wc: {"v2": "zscore", "humidity": "minmax_smooth"}[wc.kind],
+    log:
+        RES + "/logs/make_full_recordings_{kind}.log",
+    shell:
+        "python scripts/make_full_recordings.py --params {input.params} --variant {params.variant} "
+        "--out {output} > {log} 2>&1"
+
+
+rule recordings:
+    """Convenience target: both continuous-recording files."""
+    input:
+        expand(P["full_recordings_dir"] + "/full_respiration_EEG_{kind}.npy", kind=["v2", "humidity"]),
+
+
+# --------------------------------------------------------------------------- 1. ERSP
+rule ersp_phase_aligned:
+    """Respiratory-phase-locked ERSP (0-360 deg, 1-deg bins), averaged over ROI channels."""
+    input:
+        epochs=ancient(P["epochs"]),
+        info=ancient(P["info_dir"]),
+        code=ancient("scripts/generate_ersp.py"),
+    output:
+        f"{RES}/ersp/phase_aligned_fullbreath_1deg.npy",
+    params:
+        exclude=",".join(config["subjects"]["ersp_exclude"]),
+    threads: 12
+    log:
+        f"{RES}/logs/ersp_phase_aligned.log",
+    shell:
+        "python scripts/generate_ersp.py run --phase_aligned=True "
+        "--epochs_file={input.epochs} --info_dir={input.info} "
+        "--out_file={output} --exclude_subjects={params.exclude} --n_jobs={threads} > {log} 2>&1"
+
+
+rule ersp_time_aligned:
+    """Inhale-onset-locked ERSP, -0.5 s to <window> s.  window = long (3.78 s, avg first breath) or short (2 s)."""
+    input:
+        epochs=ancient(P["epochs"]),
+        info=ancient(P["info_dir"]),
+        code=ancient("scripts/generate_ersp.py"),
+    output:
+        f"{RES}/ersp/time_aligned_{{window}}.npy",
+    wildcard_constraints:
+        window="short|long",
+    params:
+        exclude=",".join(config["subjects"]["ersp_exclude"]),
+        end=lambda wc: config["ersp"][f"time_{wc.window}_end"],
+    threads: 12
+    log:
+        f"{RES}/logs/ersp_time_aligned_{{window}}.log",
+    shell:
+        "python scripts/generate_ersp.py run --phase_aligned=False "
+        "--epochs_file={input.epochs} --info_dir={input.info} "
+        "--out_file={output} --exclude_subjects={params.exclude} "
+        "--time_window_end={params.end} --n_jobs={threads} > {log} 2>&1"
+
+
+# --------------------------------------------------------------------------- 2. classification
+rule classification:
+    """Odor-vs-water classification: RPL-ERSP vs time-locked ERSP (Table S1, Table S4, Fig. 4 data)."""
+    input:
+        phase=f"{RES}/ersp/phase_aligned_fullbreath_1deg.npy",
+        time_long=f"{RES}/ersp/time_aligned_long.npy",
+        time_short=f"{RES}/ersp/time_aligned_short.npy",
+        params=f"{RES}/classification/params.yaml",
+        code=["scripts/run_classification.py", "src/olfaction_eeg/classify.py", "src/olfaction_eeg/features.py",
+              "src/olfaction_eeg/checks.py"],
+    output:
+        summary=f"{RES}/classification/classification_summary.csv",
+        pkl=f"{RES}/classification/classification_results.pkl",
+        search=f"{RES}/classification/strategy_search.csv",
+        s1=f"{RES}/classification/table_S1.csv",
+        s4=f"{RES}/classification/table_S4.csv",
+        checks=f"{RES}/classification/classification_checks.csv",
+        neural=f"{RES}/classification/neural_predictions_early.csv",
+    params:
+        outdir=f"{RES}/classification",
+        strict="--strict" if config["checks"]["strict"] else "",
+    log:
+        f"{RES}/logs/classification.log",
+    shell:
+        "python scripts/run_classification.py --phase {input.phase} --time-short {input.time_short} "
+        "--time-long {input.time_long} --params {input.params} --out-dir {params.outdir} "
+        "{params.strict} > {log} 2>&1"
+
+
+# --------------------------------------------------------------------------- 3. habituation
+rule habituation:
+    """Early (trials 1-3) vs late (6-8) classification with the phase-locked 4-bin features (Section 1.7, Fig. 5 data)."""
+    input:
+        phase=f"{RES}/ersp/phase_aligned_fullbreath_1deg.npy",
+        params=f"{RES}/habituation/params.yaml",
+        code=["scripts/run_habituation.py", "src/olfaction_eeg/classify.py", "src/olfaction_eeg/features.py",
+              "src/olfaction_eeg/checks.py"],
+    output:
+        summary=f"{RES}/habituation/habituation_summary.csv",
+        features=f"{RES}/habituation/habituation_feature_selection.csv",
+        pkl=f"{RES}/habituation/habituation_results.pkl",
+        checks=f"{RES}/habituation/habituation_checks.csv",
+    params:
+        outdir=f"{RES}/habituation",
+        strict="--strict" if config["checks"]["strict"] else "",
+    log:
+        f"{RES}/logs/habituation.log",
+    shell:
+        "python scripts/run_habituation.py --phase {input.phase} --params {input.params} "
+        "--out-dir {params.outdir} {params.strict} > {log} 2>&1"
+
+
+# --------------------------------------------------------------------------- 4. figures
+rule fig4:
+    """Fig. 4A/B and Fig. S3.  (Fig. 4C/D need the word-embedding analysis, not ported yet.)"""
+    input:
+        results=f"{RES}/classification/classification_results.pkl",
+        code=["scripts/make_fig4.py", "src/olfaction_eeg/figures.py", "src/olfaction_eeg/classify.py"],
+    output:
+        f"{FIG}/fig4_AB_classification.pdf",
+        f"{FIG}/figS3_per_odor_selection.pdf",
+    params:
+        outdir=FIG,
+    shell:
+        "python scripts/make_fig4.py --results {input.results} --out-dir {params.outdir}"
+
+
+rule fig5:
+    """Fig. 5: olfactory habituation."""
+    input:
+        results=f"{RES}/habituation/habituation_results.pkl",
+        code=["scripts/make_fig5.py", "src/olfaction_eeg/figures.py", "src/olfaction_eeg/classify.py"],
+    output:
+        f"{FIG}/fig5_habituation.pdf",
+    params:
+        outdir=FIG,
+    shell:
+        "python scripts/make_fig5.py --results {input.results} --out-dir {params.outdir}"
+
+
+# --------------------------------------------------------------------------- 5. respiration-EEG PAC (Fig. 2)
+rule pac_compute:
+    """PAC (MI + 1000 circular-shift surrogates) per subject/channel/band.  SLOW (hours).  A previously computed result
+    placed at paths.pac_results is used as is."""
+    input:
+        recordings=ancient(P["full_recordings_dir"] + "/full_respiration_EEG_humidity.npy"),
+        params=ancient(f"{RES}/pac/params.yaml"),
+        code=ancient(["scripts/run_pac.py", "src/olfaction_eeg/pac.py"]),
+    output:
+        P["pac_results"],
+    log:
+        f"{RES}/logs/pac_compute.log",
+    shell:
+        "python scripts/run_pac.py --recordings {input.recordings} --params {input.params} --out {output} > {log} 2>&1"
+
+
+rule recordings_meta:
+    """Channel names / electrode positions / bad channels of the humidity recordings (a few KB instead of several GB)."""
+    input:
+        recordings=ancient(P["full_recordings_dir"] + "/full_respiration_EEG_humidity.npy"),
+        code=ancient(["scripts/make_recordings_meta.py", "src/olfaction_eeg/recordings.py"]),
+    output:
+        P["full_recordings_dir"] + "/full_respiration_EEG_humidity_meta.npy",
+    shell:
+        "python scripts/make_recordings_meta.py --recordings {input.recordings} --out {output}"
+
+
+rule fig2:
+    """Fig. 2 and Section 1.1: whole-head PAC statistics, cluster permutation tests, topoplots."""
+    input:
+        pac=P["pac_results"],
+        meta=P["full_recordings_dir"] + "/full_respiration_EEG_humidity_meta.npy",
+        info=P["info_dir"] + "/subject" + str(PAC.get("plot_info_subject", "22")) + "_info.fif",
+        params=f"{RES}/pac/params.yaml",
+        code=["scripts/make_fig2_pac.py", "src/olfaction_eeg/pac_stats.py", "src/olfaction_eeg/pac_figure.py",
+              "src/olfaction_eeg/classify.py", "src/olfaction_eeg/checks.py"],
+    output:
+        f"{FIG}/fig2_pac.pdf",
+        f"{RES}/pac/pac_group_stats.csv",
+        f"{RES}/pac/pac_subject_level.csv",
+        f"{RES}/pac/pac_clusters.csv",
+        f"{RES}/pac/pac_stats_results.pkl",
+        f"{RES}/pac/pac_checks.csv",
+    params:
+        outdir=f"{RES}/pac",
+        figdir=FIG,
+        strict="--strict" if config["checks"]["strict"] else "",
+    log:
+        f"{RES}/logs/fig2.log",
+    shell:
+        "python scripts/make_fig2_pac.py --pac-results {input.pac} --recordings-meta {input.meta} --info-fif {input.info} "
+        "--params {input.params} --out-dir {params.outdir} --fig-dir {params.figdir} {params.strict} > {log} 2>&1"
+
+
+# --------------------------------------------------------------------------- 6. oscillatory gating of the PAC effects
+rule psd_cache:
+    """Welch spectra of all channels (needs the continuous EEG; a few MB result, part of the data deposit)."""
+    input:
+        recordings=ancient(P["full_recordings_dir"] + "/full_respiration_EEG_humidity.npy"),
+        pac=ancient(P["pac_results"]),
+        params=ancient(f"{RES}/fooof/params.yaml"),
+        code=ancient(["scripts/make_psd_cache.py", "src/olfaction_eeg/fooof_gating.py", "src/olfaction_eeg/pac.py"]),
+    output:
+        P["psd_cache"],
+    log:
+        f"{RES}/logs/psd_cache.log",
+    shell:
+        "python scripts/make_psd_cache.py --recordings {input.recordings} --pac-results {input.pac} "
+        "--params {input.params} --out {output} > {log} 2>&1"
+
+
+rule fooof_gating:
+    """Section 1.2 / Table S2: PAC restricted to channels with a genuine oscillatory peak; inhale vs exhale aperiodic."""
+    input:
+        psd=P["psd_cache"],
+        pac=P["pac_results"],
+        params=f"{RES}/fooof/params.yaml",
+        code=["scripts/run_fooof_gating.py", "src/olfaction_eeg/fooof_gating.py", "src/olfaction_eeg/pac_stats.py",
+              "src/olfaction_eeg/classify.py", "src/olfaction_eeg/checks.py"],
+    output:
+        f"{RES}/fooof/table_S2_long.csv",
+        f"{RES}/fooof/table_S2.csv",
+        f"{RES}/fooof/peak_prevalence.csv",
+        f"{RES}/fooof/gated_vs_all_channels.csv",
+        f"{RES}/fooof/aperiodic_inhale_exhale.csv",
+        f"{RES}/fooof/fooof_checks.csv",
+    params:
+        outdir=f"{RES}/fooof",
+        strict="--strict" if config["checks"]["strict"] else "",
+    log:
+        f"{RES}/logs/fooof_gating.log",
+    shell:
+        "python scripts/run_fooof_gating.py --psd-cache {input.psd} --pac-results {input.pac} --params {input.params} "
+        "--out-dir {params.outdir} {params.strict} > {log} 2>&1"
+
+
+# --------------------------------------------------------------------------- 7. breath durations (Section 1.3, Table S3)
+rule breath_stats:
+    """First-breath inhale/exhale durations per condition and the repeated-measures ANOVA (Table S3)."""
+    input:
+        epochs=ancient(P["epochs"]),
+        info=ancient(P["info_dir"]),
+        params=f"{RES}/breath/params.yaml",
+        code=["scripts/run_breath_stats.py", "src/olfaction_eeg/breath.py", "src/olfaction_eeg/checks.py"],
+    output:
+        f"{RES}/breath/breath_trials.csv",
+        f"{RES}/breath/table_S3_descriptives.csv",
+        f"{RES}/breath/table_S3_anova.csv",
+        f"{RES}/breath/breath_checks.csv",
+    params:
+        outdir=f"{RES}/breath",
+        strict="--strict" if config["checks"]["strict"] else "",
+    log:
+        f"{RES}/logs/breath_stats.log",
+    shell:
+        "python scripts/run_breath_stats.py --epochs {input.epochs} --info-dir {input.info} --params {input.params} "
+        "--out-dir {params.outdir} {params.strict} > {log} 2>&1"
+
+
+# --------------------------------------------------------------------------- 8. odor-arrival timing (Section 1.8, Tables S5-S6)
+rule timing_inputs:
+    """Small inputs of the timing analysis: respiration + timestamps of the v2 epochs, and the continuous respiration (no EEG)."""
+    input:
+        epochs=ancient(P["epochs_rebuilt"]),
+        full=ancient(P["full_recordings_dir"] + "/full_respiration_EEG_v2.npy"),
+        code=ancient(["scripts/make_timing_inputs.py", "src/olfaction_eeg/deposit.py", "src/olfaction_eeg/compat.py"]),
+    output:
+        epochs=P["epochs_v2_for_timing"],
+        continuous=P["continuous_respiration_v2"],
+    shell:
+        "python scripts/make_timing_inputs.py --epochs-v2 {input.epochs} --full-recordings {input.full} "
+        "--out-epochs {output.epochs} --out-continuous {output.continuous}"
+
+
+rule timing:
+    """Did the odor reach the nostrils by inhalation onset?  Trial timing, Table S5 (lag by subject), Table S6 (flow-rate sensitivity)."""
+    input:
+        epochs=P["epochs_v2_for_timing"],
+        continuous=P["continuous_respiration_v2"],
+        params=f"{RES}/timing/params.yaml",
+        code=["scripts/run_timing.py", "src/olfaction_eeg/timing.py", "src/olfaction_eeg/breath.py", "src/olfaction_eeg/checks.py"],
+    output:
+        f"{RES}/timing/timing_trials.csv",
+        f"{RES}/timing/table_S5_lag_by_subject.csv",
+        f"{RES}/timing/table_S6_flow_sensitivity.csv",
+        f"{RES}/timing/timing_summary.csv",
+        f"{RES}/timing/timing_checks.csv",
+    params:
+        outdir=f"{RES}/timing",
+        strict="--strict" if config["checks"]["strict"] else "",
+    log:
+        f"{RES}/logs/timing.log",
+    shell:
+        "python scripts/run_timing.py --epochs-v2 {input.epochs} --continuous {input.continuous} --params {input.params} "
+        "--out-dir {params.outdir} {params.strict} > {log} 2>&1"
+
+
+# --------------------------------------------------------------------------- 9. subject-28 sensitivity (SI 1.4, Table S7)
+rule subject28:
+    """Why subject 28 loses trials, breathing rate vs. trial retention (Spearman), and classification with / without subject 28."""
+    input:
+        epochs=ancient(P["epochs"]),
+        info=ancient(P["info_dir"]),
+        phase=f"{RES}/ersp/phase_aligned_fullbreath_1deg.npy",
+        params=f"{RES}/subject28/params.yaml",
+        code=["scripts/run_subject28.py", "src/olfaction_eeg/subject28.py", "src/olfaction_eeg/breath.py",
+              "src/olfaction_eeg/classify.py", "src/olfaction_eeg/features.py", "src/olfaction_eeg/checks.py"],
+    output:
+        f"{RES}/subject28/table_S7.csv",
+        f"{RES}/subject28/retention_by_subject.csv",
+        f"{RES}/subject28/retention_spearman.csv",
+        f"{RES}/subject28/subject28_trial_diagnosis.csv",
+        f"{RES}/subject28/subject28_skip_reasons.csv",
+        f"{RES}/subject28/subject28_checks.csv",
+    params:
+        outdir=f"{RES}/subject28",
+        strict="--strict" if config["checks"]["strict"] else "",
+    log:
+        f"{RES}/logs/subject28.log",
+    shell:
+        "python scripts/run_subject28.py --epochs {input.epochs} --info-dir {input.info} --phase {input.phase} "
+        "--params {input.params} --out-dir {params.outdir} {params.strict} > {log} 2>&1"
+
+
+# --------------------------------------------------------------------------- 10. cluster-based permutation tests (Section 1.5, Fig. S4)
+rule cluster_perm:
+    """Theta (first half) and alpha (second half) cluster tests of odor-minus-water in the 2-s, 3.78-s and phase-locked ERSPs; Fig. S4."""
+    input:
+        phase=f"{RES}/ersp/phase_aligned_fullbreath_1deg.npy",
+        time_long=f"{RES}/ersp/time_aligned_long.npy",
+        time_short=f"{RES}/ersp/time_aligned_short.npy",
+        params=f"{RES}/cluster_perm/params.yaml",
+        code=["scripts/run_cluster_perm.py", "src/olfaction_eeg/cluster_perm.py", "src/olfaction_eeg/cluster_figure.py",
+              "src/olfaction_eeg/checks.py"],
+    output:
+        f"{RES}/cluster_perm/cluster_perm_summary.csv",
+        f"{RES}/cluster_perm/cluster_perm_clusters.csv",
+        f"{RES}/cluster_perm/cluster_perm_sensitivity.csv",
+        f"{RES}/cluster_perm/cluster_perm_results.pkl",
+        f"{RES}/cluster_perm/cluster_perm_checks.csv",
+        f"{FIG}/figS4_cluster_perm.pdf",
+    params:
+        outdir=f"{RES}/cluster_perm",
+        figdir=FIG,
+        strict="--strict" if config["checks"]["strict"] else "",
+    log:
+        f"{RES}/logs/cluster_perm.log",
+    shell:
+        "python scripts/run_cluster_perm.py --phase {input.phase} --time-short {input.time_short} --time-long {input.time_long} "
+        "--params {input.params} --out-dir {params.outdir} --fig-dir {params.figdir} {params.strict} > {log} 2>&1"
+
+
+# --------------------------------------------------------------------------- 11. Fig. 3
+rule fig3:
+    """Fig. 3: respiratory phase-locked ERSPs.  Needs the original epochs (respiration of every trial) and two ERSP files."""
+    input:
+        epochs=ancient(P["epochs"]),
+        info=ancient(P["info_dir"]),
+        phase=f"{RES}/ersp/phase_aligned_fullbreath_1deg.npy",
+        time_long=f"{RES}/ersp/time_aligned_long.npy",
+        params=f"{RES}/fig3/params.yaml",
+        code=["scripts/make_fig3.py", "src/olfaction_eeg/fig3.py", "src/olfaction_eeg/breath.py", "src/olfaction_eeg/checks.py"],
+    output:
+        f"{FIG}/fig3_ersps.pdf",
+        f"{RES}/fig3/fig3_info.json",
+        f"{RES}/fig3/fig3_checks.csv",
+    params:
+        outdir=f"{RES}/fig3",
+        figdir=FIG,
+        strict="--strict" if config["checks"]["strict"] else "",
+    log:
+        f"{RES}/logs/fig3.log",
+    shell:
+        "python scripts/make_fig3.py --epochs {input.epochs} --info-dir {input.info} --phase {input.phase} --time-long {input.time_long} "
+        "--params {input.params} --out-dir {params.outdir} --fig-dir {params.figdir} {params.strict} > {log} 2>&1"
+
+
+# --------------------------------------------------------------------------- 12. Fig. 1 (right panel): example respiration trace
+rule fig1_trial:
+    """One subject's QC-passed humidity snippets (needs the raw EEGLAB file and olfactometer CSV; run only if the deposited snippet file is missing)."""
+    input:
+        mat=ancient(expand(P["raw_eeglab"], subject=FIG1["subject"])),
+        csv=ancient(expand(P["raw_olfactometer"], subject=FIG1["subject"])),
+        params=ancient(f"{RES}/fig1/params.yaml"),
+        code=ancient(["scripts/make_fig1_resp.py", "src/olfaction_eeg/fig1_resp.py"]),
+    output:
+        FIG1["trial_file"],
+    params:
+        subject=FIG1["subject"],
+    shell:
+        "python scripts/make_fig1_resp.py extract --subject {params.subject} --csv {input.csv} --mat {input.mat} "
+        "--params {input.params} --out {output}"
+
+
+rule fig1_resp:
+    """Fig. 1, right panel: example nasal-humidity trace with inhale / exhale marked."""
+    input:
+        trial=FIG1["trial_file"],
+        code=["scripts/make_fig1_resp.py", "src/olfaction_eeg/fig1_resp.py"],
+    output:
+        f"{FIG}/fig1_respiration_example.pdf",
+    params:
+        prefix=f"{FIG}/fig1_respiration_example",
+        idx=FIG1["trial_idx"],
+    shell:
+        "python scripts/make_fig1_resp.py plot --trial-file {input.trial} --out-prefix {params.prefix} --trial-idx {params.idx}"
+
+
+# --------------------------------------------------------------------------- 13. Fig. S2: example FOOOF fits
+rule figS2:
+    """SI Fig. S2: example power spectra with FOOOF fits, with and without an oscillatory peak, for theta / alpha / beta / low gamma."""
+    input:
+        psd=P["psd_cache"],
+        params=f"{RES}/fooof/params.yaml",
+        code=["scripts/make_figS2.py", "src/olfaction_eeg/fig_s2.py", "src/olfaction_eeg/fooof_gating.py", "src/olfaction_eeg/checks.py"],
+    output:
+        f"{FIG}/figS2_fooof_examples.pdf",
+        f"{RES}/fooof/figS2_examples.json",
+        f"{RES}/fooof/figS2_checks.csv",
+    params:
+        outdir=f"{RES}/fooof",
+        figdir=FIG,
+        strict="--strict" if config["checks"]["strict"] else "",
+    log:
+        f"{RES}/logs/figS2.log",
+    shell:
+        "python scripts/make_figS2.py --psd-cache {input.psd} --params {input.params} --out-dir {params.outdir} "
+        "--fig-dir {params.figdir} {params.strict} > {log} 2>&1"
+
+
+# --------------------------------------------------------------------------- 14. free-response identification (Fig. 4C/D, Section 1.6, SI 3.1)
+rule word_scoring:
+    """Hybrid GoodScents / word-embedding score of the free odor descriptions, comparison between odors, Fig. 4C/D and the neural-behavior correlation (SI 3.1).
+    Needs sentence-transformers (envs/embeddings.yml) and, the first time, internet access for the model."""
+    input:
+        neural=f"{RES}/classification/neural_predictions_early.csv",
+        responses=WS["responses"],
+        goodscents=WS["goodscents_selected"],
+        params=f"{RES}/word_scoring/params.yaml",
+        code=["scripts/run_word_scoring.py", "src/olfaction_eeg/word_scoring.py", "src/olfaction_eeg/fig4cd.py", "src/olfaction_eeg/checks.py"],
+    output:
+        f"{RES}/word_scoring/scores_by_response.csv",
+        f"{RES}/word_scoring/behavior_summary.csv",
+        f"{RES}/word_scoring/behavior_tests.csv",
+        f"{RES}/word_scoring/si31_neural_behavior_correlation.csv",
+        f"{RES}/word_scoring/embedding_versions.json",
+        f"{RES}/word_scoring/word_scoring_checks.csv",
+        f"{FIG}/fig4CD_recognition.pdf",
+    params:
+        outdir=f"{RES}/word_scoring",
+        figdir=FIG,
+        strict="--strict" if config["checks"]["strict"] else "",
+    log:
+        f"{RES}/logs/word_scoring.log",
+    shell:
+        "python scripts/run_word_scoring.py --params {input.params} --out-dir {params.outdir} --fig-dir {params.figdir} "
+        "--neural-predictions {input.neural} {params.strict} > {log} 2>&1"
+
+
+rule fig1_figure:
+    """Fig. 1 for the journal: the hand-made illustration (figure_sources/) + the respiration trace, assembled as one 180 x 96 mm vector PDF."""
+    input:
+        trial=FIG1["trial_file"],
+        left="figure_sources/figure1_left_infographic.pdf",
+        code=["scripts/make_fig1.py", "src/olfaction_eeg/fig1_compose.py"],
+    output:
+        f"{FIG}/fig1.pdf",
+    params:
+        prefix=f"{FIG}/fig1",
+        idx=FIG1["trial_idx"],
+    shell:
+        "python scripts/make_fig1.py --left-pdf {input.left} --trial-file {input.trial} --trial-idx {params.idx} --out-prefix {params.prefix}"

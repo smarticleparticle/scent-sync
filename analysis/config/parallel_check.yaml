@@ -1,0 +1,5 @@
+# Same analysis, written to separate folders -- lets a second (parallel) run go on while another run is still using results/:
+#   snakemake -c10 results_parallel/ersp/phase_aligned_fullbreath_1deg.npy --configfile config/parallel_check.yaml
+paths:
+  results: results_parallel
+  figures: figures_parallel
