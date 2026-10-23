@@ -18,7 +18,7 @@ The paper reports the parts cost as under $500.
 
 ## Data
 
-The preprocessed EEG and respiration data (17 participants) are deposited in the Stanford Digital Repository (link to be added). The raw EEG is available on reasonable request.
+The preprocessed EEG and respiration data (17 participants) are deposited in the Stanford Digital Repository: https://doi.org/10.25740/gs394xq8865 (license CC BY-NC 4.0). The raw EEG is available on reasonable request.
 
 ## License and citation
 

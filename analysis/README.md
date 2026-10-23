@@ -12,7 +12,7 @@ The analysis is a [Snakemake](https://snakemake.readthedocs.io) workflow. Each s
 # 1. environment (Python 3.13)
 conda env create -f environment.yml && conda activate olfaction-eeg
 
-# 2. data: download the deposit (Stanford Digital Repository; link to be added) into data/preprocessed/ and copy its three ERSP files into results/ersp/
+# 2. data: download the deposit (Stanford Digital Repository: https://doi.org/10.25740/gs394xq8865) into data/preprocessed/ and copy its three ERSP files into results/ersp/
 python scripts/verify_data.py --manifest data/preprocessed/MANIFEST.sha256 --root data/preprocessed
 
 # 3. run everything and check it against the paper

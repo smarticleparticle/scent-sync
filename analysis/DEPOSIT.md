@@ -1,6 +1,8 @@
 # Data deposit
 
-Deposited in the Stanford Digital Repository (link to be added). It contains what is needed to regenerate every figure and table of the paper. The raw EEG, the olfactometer files, the continuous EEG and the whole-session respiration recordings (used only
+**License:** CC BY-NC 4.0.
+
+Deposited in the Stanford Digital Repository (https://doi.org/10.25740/gs394xq8865). It contains what is needed to regenerate every figure and table of the paper. The raw EEG, the olfactometer files, the continuous EEG and the whole-session respiration recordings (used only
 for the odor-arrival timing check, Section 1.8 and Tables S5-S6) are not included (available on reasonable request).
 
 ## Contents (about 4.7 GB)
