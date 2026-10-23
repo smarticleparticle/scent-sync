@@ -2,7 +2,7 @@
 
 An open-source, low-cost olfactometer that delivers odors in step with natural breathing, together with the EEG and respiration analysis code of
 
-> Hathaway AY, Coleman TP. *Respiratory Phase Orchestrates Human Olfactory Cortical Dynamics.* PNAS (2026).
+> Hathaway AY, Coleman TP. *Respiratory Phase Orchestrates Human Olfactory Cortical Dynamics.* PNAS (2026), in press.
 
 An Arduino reads nasal humidity, detects the start of each breath, and releases the odor so that it reaches the nose at the next inhalation, without disturbing normal breathing. A TTL pulse marks the moment in the EEG recording.
 
