@@ -5,7 +5,7 @@ An open-source, low-cost olfactometer that delivers odors in step with natural b
 > Hathaway AY, Coleman TP. *Respiratory Phase Orchestrates Human Olfactory Cortical Dynamics.* PNAS (2026).
 
 An Arduino reads nasal humidity, detects the start of each breath, and releases the odor so that it reaches the nose at the next inhalation, without disturbing normal breathing. A TTL pulse marks the moment in the EEG recording.
-The paper reports the parts cost as under $500.
+
 
 ## What is in this repository
 
