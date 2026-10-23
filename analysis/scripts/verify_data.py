@@ -13,8 +13,6 @@ NEEDED_FOR = {
     "pac_results_slim.npy": "Fig 2, Section 1.1-1.2, Table S2",
     "psd_cache.npy": "Section 1.2, Table S2 (FOOOF analysis)",
     "full_respiration_EEG_humidity_meta.npy": "Fig 2 (channel positions)",
-    "continuous_respiration_v2.npy": "odor-arrival timing (Section 1.8; Tables S5, S6)",
-    "epochs_v2_for_timing.npy": "odor-arrival timing (Section 1.8; Tables S5, S6)",
 }
 
 

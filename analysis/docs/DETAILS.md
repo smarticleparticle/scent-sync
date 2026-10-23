@@ -11,10 +11,14 @@ Each step is a Snakemake rule (`Snakefile`); settings are in `config/config.yaml
 | classification | odor vs. water decoding with leave-one-subject-out validation | Tables S1, S4; Fig. 4A/B, S3 |
 | habituation | early vs. late trials | Section 1.7, Fig. 5 |
 | PAC, FOOOF gating | respiration-EEG coupling, and whether it reflects an oscillation | Fig. 2, Sections 1.1-1.2, Table S2, Fig. S2 |
-| breath durations, timing, participant 28 | respiration timing checks | Tables S3, S5-S7, Sections 1.3, 1.8, SI 1.4 |
+| breath durations, participant 28 | respiration timing checks | Tables S3, S7, Section 1.3, SI 1.4 |
 | cluster tests | theta and alpha clusters in the ERSPs | Section 1.5, Fig. S4 |
 | free-response scoring | how well participants described each odor, with a language model | Fig. 4C/D, Section 1.6, SI 3.1 |
 | figures | Figs. 1, 3 and the rest | |
+
+## Not in the public deposit
+The odor-arrival timing check (Section 1.8, Tables S5-S6) measures, for each trial, the time between the start of exhalation (which triggered the odor valve) and the next inhalation, using the whole-session respiration
+recordings. These recordings are available on request; the code is `scripts/run_timing.py` and is switched on with `timing: run: true`.
 
 ## Recomputing the ERSP and PAC results
 The deposit includes the ERSP and PAC results behind the paper. Both can be recomputed with this code (`scripts/generate_ersp.py` from the epochs; the PAC step from the continuous EEG, which is not deposited),

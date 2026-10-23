@@ -4,14 +4,13 @@
 What goes into the deposit (see DEPOSIT.md):
   * epochs_eeg_respiration_withtimestamps_v2.npy   preprocessed EEG epochs + respiration epochs   (large; used as is)
   * info/subject*_info.fif                         channel names / montage                        (18 KB each)
-  * continuous_respiration_v2.npy, epochs_v2_for_timing.npy   inputs of the timing analysis, NO EEG    (made by `snakemake timing_inputs`)
   * fig1_example_trial.npy                           one subject's humidity snippets for Fig. 1 (right panel)  (made by `snakemake fig1_trial`)
   * pac_results_slim.npy                           PAC results without per-surrogate arrays       (created here)
   * full_respiration_EEG_humidity_meta.npy         channel info / bad channels                    (created here)
   * psd_cache.npy                                  Welch spectra of all channels (FOOOF analysis) (made by `snakemake psd_cache`)
   * (optional) ERSP files                          saves hours of wavelet computation
 
-NOT deposited (available on request): raw EEGLAB .mat, olfactometer CSVs, continuous EEG (several GB each).
+NOT deposited (available on request): raw EEGLAB .mat, olfactometer CSVs, continuous EEG (several GB each), whole-session respiration (odor-arrival timing check).
 
     python scripts/make_deposit.py --config config/config.yaml --out-dir deposit [--include-ersp]
 """
@@ -71,11 +70,7 @@ def main():
             add(os.path.join(out, "info", f), f"info/{f}")
 
     # --- derived files
-    for key in ("epochs_v2_for_timing", "continuous_respiration_v2"):          # made by `snakemake timing_inputs`
-        if os.path.exists(P[key]):
-            add(P[key], os.path.basename(P[key]))
-        else:
-            skipped.append(P[key])
+    # (the whole-session respiration used for the odor-arrival timing check, Section 1.8 / Tables S5-S6, is NOT deposited: available on request)
     fig1_file = (cfg.get("fig1_resp") or {}).get("trial_file")                  # made by `snakemake fig1_trial` (needs the raw data)
     if fig1_file:
         if os.path.exists(fig1_file):

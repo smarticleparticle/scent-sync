@@ -79,8 +79,9 @@ def test_make_deposit_copy_all_builds_a_verifiable_folder(tmp_path):
     r = subprocess.run([sys.executable, os.path.join(root, "scripts", "make_deposit.py"), "--config", str(tmp_path / "cfg.yaml"),
                         "--out-dir", str(out), "--include-ersp", "--copy-all"], capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
-    for name in ("epochs.npy", "t1.npy", "t2.npy", "psd.npy", "trial.npy", "info/subject22_info.fif", "ersp/time_aligned_long.npy", "MANIFEST.sha256"):
+    for name in ("epochs.npy", "psd.npy", "trial.npy", "info/subject22_info.fif", "ersp/time_aligned_long.npy", "MANIFEST.sha256"):
         assert (out / name).exists(), name
+    assert not (out / "t1.npy").exists() and not (out / "t2.npy").exists()          # the whole-session respiration (odor-arrival timing) is not deposited
     status = deposit.verify_manifest(str(out / "MANIFEST.sha256"), str(out))
     assert status and all(v == "ok" for v in status.values())
     assert "none.npy" in r.stdout                                     # the files that were not found are reported, not silently dropped
@@ -105,10 +106,10 @@ def test_make_deposit_analyzed_only_leaves_out_the_other_participants(tmp_path):
     (src / "ersp").mkdir()
     def dump(name, obj):
         np.save(src / name, obj, allow_pickle=True)
-    dump("epochs.npy", {"EEG": {"water": {"22": np.zeros(3), "19": np.ones(3)}}, "respiration": {"water": {"22": np.zeros(3), "19": np.ones(3)}}})
+    dump("epochs.npy", {"EEG": {"water": {"22": np.zeros(3), "19": np.ones(3), "30": np.ones(3)}}, "respiration": {"water": {"22": np.zeros(3), "19": np.ones(3)}}})
     dump("t1.npy", {"timestamps": {"water": {"22": np.arange(3.0), "30": np.arange(3.0)}}})
     dump("t2.npy", {"metadata": {"22": {"bad_channels": ["E1"]}, "25": {"bad_channels": []}}})
-    dump("psd.npy", {"psd": {"22": {"E1": 1}, "19": {"E1": 2}}})
+    dump("psd.npy", {"psd": {"22": {"E1": 1}, "19": {"E1": 2}, "25": {"E1": 3}}})
     dump("trial.npy", {"subject": "22", "trials": np.zeros((2, 3))})
     for f in ("phase_aligned_fullbreath_1deg.npy", "time_aligned_long.npy", "time_aligned_short.npy"):
         dump("ersp/" + f, {"water": {"22": {0: np.zeros(2)}}})
@@ -127,10 +128,35 @@ def test_make_deposit_analyzed_only_leaves_out_the_other_participants(tmp_path):
     ep = np.load(out / "epochs.npy", allow_pickle=True).item()
     assert set(ep["EEG"]["water"]) == {"22"} and set(ep["respiration"]["water"]) == {"22"}
     assert set(np.load(out / "psd.npy", allow_pickle=True).item()["psd"]) == {"22"}
-    assert set(np.load(out / "t1.npy", allow_pickle=True).item()["timestamps"]["water"]) == {"22"}
     assert "subject 19" in r.stdout and "subject30" not in r.stdout and "subject 30" in r.stdout and "subject 25" in r.stdout
     status = deposit.verify_manifest(str(out / "MANIFEST.sha256"), str(out))
     assert status and all(v == "ok" for v in status.values())
     mtimes = {round(os.path.getmtime(os.path.join(dp, f))) for dp, _, fs in os.walk(out) for f in fs}
     assert len(mtimes) == 1                                                  # every file carries the same (neutral) date
-    assert os.path.exists(src / "epochs.npy") and set(np.load(src / "epochs.npy", allow_pickle=True).item()["EEG"]["water"]) == {"22", "19"}   # the originals are untouched
+    assert os.path.exists(src / "epochs.npy") and set(np.load(src / "epochs.npy", allow_pickle=True).item()["EEG"]["water"]) == {"22", "19", "30"}   # the originals are untouched
+
+
+def test_deposit_config_switches_the_timing_stage_off_and_the_deposit_has_no_timing_files():
+    import yaml
+    root = os.path.dirname(os.path.dirname(__file__))
+    cfg = yaml.safe_load(open(os.path.join(root, "config", "deposit.yaml")))
+    assert cfg["timing"]["run"] is False and cfg["word_scoring"]["run"] is True
+    src = open(os.path.join(root, "scripts", "make_deposit.py")).read()
+    assert "epochs_v2_for_timing" not in src.split("# --- derived files")[1].split("fig1_file")[0]        # the builder no longer adds the two timing files
+
+
+def test_refresh_manifest_lists_what_is_in_the_folder_and_verifies(tmp_path):
+    import subprocess
+    root = tmp_path / "dep"
+    (root / "info").mkdir(parents=True)
+    (root / "a.npy").write_bytes(b"a")
+    (root / "info" / "subject22_info.fif").write_bytes(b"i")
+    (root / "b.npy").write_bytes(b"b")
+    script = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scripts", "refresh_manifest.py")
+    assert subprocess.run([sys.executable, script, "--root", str(root)], capture_output=True, text=True).returncode == 0
+    assert set(deposit.verify_manifest(str(root / "MANIFEST.sha256"), str(root))) == {"a.npy", "b.npy", "info/subject22_info.fif"}
+    (root / "b.npy").unlink()                                              # remove a file by hand, refresh, and the manifest follows
+    assert subprocess.run([sys.executable, script, "--root", str(root)], capture_output=True, text=True).returncode == 0
+    status = deposit.verify_manifest(str(root / "MANIFEST.sha256"), str(root))
+    assert set(status) == {"a.npy", "info/subject22_info.fif"} and all(v == "ok" for v in status.values())
+    assert len({round(os.path.getmtime(os.path.join(dp, f))) for dp, _, fs in os.walk(root) for f in fs}) == 1

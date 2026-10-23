@@ -13,13 +13,13 @@ import sys
 
 import pandas as pd
 
+OPTIONAL_STAGES = {"timing": "Section 1.8, Tables S5-S6 (needs whole-session respiration recordings; not in the public deposit)"}
 EXPECTED_STAGES = {          # stage folder -> what it covers
     "classification": "Table S1, Table S4, Fig. 4A/B, Fig. S3",
     "habituation": "Section 1.7, Fig. 5",
     "pac": "Section 1.1, Fig. 2",
     "fooof": "Section 1.2, Table S2, Fig. S2",
     "breath": "Section 1.3, Table S3",
-    "timing": "Section 1.8, Tables S5-S6",
     "subject28": "SI 1.4, Table S7",
     "cluster_perm": "Section 1.5, Fig. S4",
     "fig3": "Fig. 3",
@@ -56,8 +56,11 @@ def main():
     if len(mismatches) > a.max_listed * 4:
         print(f"  ... and {len(mismatches) - a.max_listed * 4} more")
     missing = [f"{s} ({w})" for s, w in EXPECTED_STAGES.items() if s not in seen]
+    skipped_optional = [f"{s} ({w})" for s, w in OPTIONAL_STAGES.items() if s not in seen]
     if missing:
         print("\nNo checks found for: " + "; ".join(missing) + "  (stage not run, or checks disabled)")
+    if skipped_optional:
+        print("Optional, not run: " + "; ".join(skipped_optional))
     sys.exit(0 if ok == total and total > 0 else 1)
 
 
