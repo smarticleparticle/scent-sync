@@ -76,7 +76,7 @@ def test_fig3_script_end_to_end(tmp_path):
                         "--params", str(tmp_path / "params.yaml"), "--out-dir", str(tmp_path / "out"), "--fig-dir", str(tmp_path / "fig")],
                        capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
-    assert (tmp_path / "fig" / "fig3_ersps.pdf").exists() and (tmp_path / "fig" / "fig3_ersps.png").exists()
+    assert (tmp_path / "fig" / "fig3_ersps.pdf").exists() and not (tmp_path / "fig" / "fig3_ersps.png").exists()      # PDF only
     assert (tmp_path / "out" / "fig3_info.json").exists()
 
 

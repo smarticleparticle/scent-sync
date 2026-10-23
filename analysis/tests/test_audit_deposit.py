@@ -40,3 +40,23 @@ def test_flags_clock_times_dates_and_info_fields(tmp_path):
     assert "date/time object" in out and "[text]" in out and "John's session" in out
     assert "meas_date" in out and "experimenter" in out and "meas_id=2025-03-04" in out
     assert "item(s) to look at" in out
+
+
+def test_audit_reports_participants_outside_the_analysed_list(tmp_path):
+    import yaml
+    (tmp_path / "info").mkdir()
+    info = mne.create_info(["E1", "E2"], 250.0, "eeg")
+    for sid in ("22", "19"):
+        mne.io.write_info(str(tmp_path / "info" / f"subject{sid}_info.fif"), info)
+    np.save(tmp_path / "d.npy", {"EEG": {"water": {"22": np.zeros(2), "19": np.zeros(2)}}, "subjects": ["22", "19"]}, allow_pickle=True)
+    yaml.safe_dump({"subjects": {"normosmia": ["22"]}}, open(tmp_path / "cfg.yaml", "w"))
+    r = audit(tmp_path, "--config", str(tmp_path / "cfg.yaml"))
+    assert r.returncode == 0
+    assert "participants who are not in the analyses: ['19']" in r.stdout
+    assert "participant-like IDs that are not in the analysed list: 19" in r.stdout
+    assert "electrode positions are identical in all 2 files" in r.stdout
+    # and a clean deposit says so
+    (tmp_path / "info" / "subject19_info.fif").unlink()
+    np.save(tmp_path / "d.npy", {"EEG": {"water": {"22": np.zeros(2)}}, "subjects": ["22"]}, allow_pickle=True)
+    r2 = audit(tmp_path, "--config", str(tmp_path / "cfg.yaml"))
+    assert "Only the 1 analysed participants appear" in r2.stdout and "not in the analysed list" not in r2.stdout

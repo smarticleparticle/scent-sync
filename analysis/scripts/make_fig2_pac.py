@@ -45,7 +45,6 @@ def main():
     os.makedirs(a.out_dir, exist_ok=True)
     os.makedirs(a.fig_dir, exist_ok=True)
     fig.savefig(os.path.join(a.fig_dir, "fig2_pac.pdf"))
-    fig.savefig(os.path.join(a.fig_dir, "fig2_pac.png"), dpi=300, bbox_inches="tight", facecolor="white")
 
     effects = pac_stats.effect_sizes(df_obs)
     df_obs.to_csv(os.path.join(a.out_dir, "pac_subject_level.csv"), index=False)

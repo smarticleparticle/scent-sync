@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 """Build the derived files of the data deposit and a checksum manifest.
 
-What goes into the deposit (see README, "Data availability"):
+What goes into the deposit (see DEPOSIT.md):
   * epochs_eeg_respiration_withtimestamps_v2.npy   preprocessed EEG epochs + respiration epochs   (large; used as is)
   * info/subject*_info.fif                         channel names / montage                        (18 KB each)
   * continuous_respiration_v2.npy, epochs_v2_for_timing.npy   inputs of the timing analysis, NO EEG    (made by `snakemake timing_inputs`)
   * fig1_example_trial.npy                           one subject's humidity snippets for Fig. 1 (right panel)  (made by `snakemake fig1_trial`)
-  * continuous_respiration_humidity.npy            continuous respiration + events, NO EEG        (created here)
   * pac_results_slim.npy                           PAC results without per-surrogate arrays       (created here)
   * full_respiration_EEG_humidity_meta.npy         channel info / bad channels                    (created here)
   * psd_cache.npy                                  Welch spectra of all channels (FOOOF analysis) (made by `snakemake psd_cache`)
@@ -18,6 +17,7 @@ NOT deposited (available on request): raw EEGLAB .mat, olfactometer CSVs, contin
 """
 import argparse
 import os
+import re
 import shutil
 
 import numpy as np
@@ -37,6 +37,8 @@ def main():
     ap.add_argument("--psd-cache", default=None, help="the spectra cache (default: paths.psd_cache)")
     ap.add_argument("--copy-all", action="store_true",
                     help="copy every listed file into --out-dir (otherwise large existing files are only referenced), so that the folder is complete")
+    ap.add_argument("--analyzed-only", action="store_true",
+                    help="only the participants of subjects.normosmia (the ones in the paper's analyses): other participants' entries are removed from every file, their montage files are not copied")
     ap.add_argument("--epochs", default=None, help="the epochs file the paper's ERSPs were computed from (default: paths.epochs)")
     a = ap.parse_args()
 
@@ -46,8 +48,9 @@ def main():
         if val:
             P[key] = val
     out = a.out_dir
+    keep = set(cfg["subjects"]["normosmia"]) if a.analyzed_only else None
     os.makedirs(os.path.join(out, "info"), exist_ok=True)
-    entries, skipped = [], []
+    entries, skipped, dropped_info, filter_report = [], [], [], []
 
     def add(path, name):
         entries.append((path, name))
@@ -60,6 +63,10 @@ def main():
     info_dir = P["info_dir"]
     for f in sorted(os.listdir(info_dir)) if os.path.isdir(info_dir) else []:
         if f.endswith(".fif"):
+            m = re.search(r"subject(\d+)_info\.fif$", f)
+            if keep is not None and m and m.group(1) not in keep:
+                dropped_info.append(f)
+                continue
             shutil.copy(os.path.join(info_dir, f), os.path.join(out, "info", f))
             add(os.path.join(out, "info", f), f"info/{f}")
 
@@ -80,9 +87,7 @@ def main():
         src = os.path.join(rec_dir, f"full_respiration_EEG_{kind}.npy")
         if os.path.exists(src):
             full = compat.load_pickled_dict(src)
-            dst = os.path.join(out, f"continuous_respiration_{kind}.npy")
-            np.save(dst, deposit.extract_continuous_respiration(full), allow_pickle=True)
-            add(dst, os.path.basename(dst))
+            # (the continuous respiration of this recording is NOT deposited: only the PAC computation reads it, and the PAC results themselves are deposited)
             if kind == "humidity":
                 dst = os.path.join(out, "full_respiration_EEG_humidity_meta.npy")
                 np.save(dst, recordings.make_recordings_meta(full), allow_pickle=True)
@@ -108,6 +113,19 @@ def main():
             else:
                 skipped.append(p)
 
+    if keep is not None:                                                                  # remove everybody who is not in the analyses from every data file
+        for i, (path, name) in enumerate(entries):
+            if not name.endswith(".npy"):
+                continue
+            obj = compat.load_pickled_dict(path)
+            obj, removed = deposit.filter_subjects(obj, keep)
+            filter_report.append((name, removed))
+            if removed:
+                dst = os.path.join(out, name)
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                np.save(dst, obj, allow_pickle=True)
+                entries[i] = (dst, name)
+            del obj
     if a.copy_all:
         for i, (path, name) in enumerate(entries):
             dst = os.path.join(out, name)
@@ -131,6 +149,13 @@ def main():
     print(f"{'TOTAL':55s} {total / 1e6:10.1f} MB\nManifest: {manifest}")
     if skipped:
         print("\nNot found (skipped):\n  " + "\n  ".join(skipped))
+    if keep is not None:
+        print(f"\nOnly the {len(keep)} analysed participants are included. Left out:")
+        print("  montage files: " + (", ".join(dropped_info) if dropped_info else "none"))
+        for name, removed in filter_report:
+            print(f"  {name}: " + (", ".join(f"subject {k} ({n}x)" for k, n in sorted(removed.items())) if removed else "no other participants found"))
+    deposit.normalise_mtimes(out)                                                        # no file carries the dates it was made on
+    print("\nFile modification times in the deposit folder were set to 2026-01-01.")
 
 
 if __name__ == "__main__":

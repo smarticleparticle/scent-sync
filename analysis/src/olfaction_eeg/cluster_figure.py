@@ -77,6 +77,5 @@ def make_figS4(all_results, out_prefix=None, dpi=600):
     cbar = fig.colorbar(im_last, cax=cbar_ax)
     cbar.set_label('t-statistic', fontsize=16)
     if out_prefix:
-        fig.savefig(out_prefix + ".png", dpi=dpi, bbox_inches="tight")
         fig.savefig(out_prefix + ".pdf", bbox_inches="tight")
     return fig, global_vmax

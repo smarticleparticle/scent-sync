@@ -24,7 +24,7 @@ def main():
     os.makedirs(args.out_dir, exist_ok=True)
     fig = figures.build_fig5(R["per_odor"], count_unselected_as_zero=h["fig5b_count_unselected_as_zero"],
                              robust_threshold=h["fig5b_robust_threshold"])
-    for ext in ("pdf", "png"):
+    for ext in ("pdf",):
         fig.savefig(os.path.join(args.out_dir, f"fig5_habituation.{ext}"), bbox_inches="tight")
     print(f"Saved Fig. 5 to {args.out_dir}")
 

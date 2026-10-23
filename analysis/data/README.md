@@ -9,7 +9,7 @@ data/
 │   └── olfactometer/OlfactometerSubject<ID>.csv   olfactometer humidity-sensor record
 └── preprocessed/                            # what is shared; stage 0 writes epochs here, or you drop it in
     ├── epochs_eeg_respiration.npy                 the epochs file the paper's ERSPs were computed from (deposit)
-    ├── epochs_eeg_respiration_withtimestamps_v2.npy   rebuilt from raw by stage 0 (not deposited; a different file, see DEPOSIT.md)
+    ├── epochs_eeg_respiration_withtimestamps_v2.npy   rebuilt from raw by stage 0 (not deposited; a different file, see docs/DETAILS.md)
     ├── epochs_v2_for_timing.npy, continuous_respiration_v2.npy   small, no EEG (deposit; odor-arrival timing)
     ├── fig1_example_trial.npy                     one subject's respiration snippets (deposit; Fig. 1 right panel)
     ├── pac_results_slim.npy, full_respiration_EEG_humidity_meta.npy, psd_cache.npy   derived, small (deposit; Fig. 2, Table S2, Fig. S2)

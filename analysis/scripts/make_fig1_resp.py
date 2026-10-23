@@ -48,10 +48,9 @@ def main():
         d = np.load(a.trial_file, allow_pickle=True).item()
         idx = 0 if a.trial_idx is None else a.trial_idx
         os.makedirs(os.path.dirname(a.out_prefix) or ".", exist_ok=True)
-        fig = fig1_resp.plot_example_trial(d["trials"][idx], trial_idx=idx, pre_ttl=d["pre_ttl"], post_ttl=d["post_ttl"],
-                                           save_path=a.out_prefix + ".png")
+        fig = fig1_resp.plot_example_trial(d["trials"][idx], trial_idx=idx, pre_ttl=d["pre_ttl"], post_ttl=d["post_ttl"])
         fig.savefig(a.out_prefix + ".pdf", bbox_inches="tight")
-        print(f"wrote {a.out_prefix}.png / .pdf (subject {d['subject']}, trial {idx + 1} of {len(d['trials'])})")
+        print(f"wrote {a.out_prefix}.pdf (subject {d['subject']}, trial {idx + 1} of {len(d['trials'])})")
 
 
 if __name__ == "__main__":

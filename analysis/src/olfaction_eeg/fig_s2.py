@@ -119,6 +119,5 @@ def make_figS2(peak_gate, psd_cache, freq_bands, settings=None, out_prefix=None,
 
     plt.tight_layout()
     if out_prefix:
-        fig.savefig(out_prefix + ".png", dpi=dpi, bbox_inches='tight')
         fig.savefig(out_prefix + ".pdf", bbox_inches='tight')
     return fig, chosen

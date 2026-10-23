@@ -15,7 +15,6 @@ NEEDED_FOR = {
     "full_respiration_EEG_humidity_meta.npy": "Fig 2 (channel positions)",
     "continuous_respiration_v2.npy": "odor-arrival timing (Section 1.8; Tables S5, S6)",
     "epochs_v2_for_timing.npy": "odor-arrival timing (Section 1.8; Tables S5, S6)",
-    "continuous_respiration_humidity.npy": "PAC respiratory phase, oscillatory-gating analyses",
 }
 
 

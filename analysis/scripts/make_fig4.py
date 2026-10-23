@@ -27,11 +27,11 @@ def main():
     os.makedirs(args.out_dir, exist_ok=True)
 
     fig4 = figures.build_fig4_AB(per_odor, phase_bins, time_bins)
-    for ext in ("png", "pdf"):
+    for ext in ("pdf",):
         fig4.savefig(os.path.join(args.out_dir, f"fig4_AB_classification.{ext}"), dpi=300, bbox_inches="tight")
 
     figS3 = figures.build_figS3(figures.figS3_data(per_odor, phase_bins))
-    for ext in ("png", "pdf"):
+    for ext in ("pdf",):
         figS3.savefig(os.path.join(args.out_dir, f"figS3_per_odor_selection.{ext}"), dpi=300, bbox_inches="tight")
     print(f"Saved Fig. 4A/B and Fig. S3 to {args.out_dir}")
 

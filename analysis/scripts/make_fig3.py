@@ -60,7 +60,6 @@ def main():
         phase, time_long, breath_data,
         subjects_individual=cfg["subjects_individual"], subjects_grand=p["normosmia"], odor_list=p["odors"],
         n_trials=cfg["n_trials"], freq_min=4, freq_max=40, time_max_long=3.78, percentile=99, save_path=pdf)
-    fig.savefig(os.path.join(a.fig_dir, "fig3_ersps.png"), dpi=300)
     info = fig.fig3_info
     json.dump({k: (v if not isinstance(v, (np.floating, np.integer)) else float(v)) for k, v in info.items()},
               open(os.path.join(a.out_dir, "fig3_info.json"), "w"), indent=2, default=float)

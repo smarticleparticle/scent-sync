@@ -1,4 +1,4 @@
-"""Helpers for building and checking the public data deposit (Zenodo).
+"""Helpers for building and checking the public data deposit.
 
 The paper's raw EEG is not deposited; the deposit contains the *minimum derived data needed to regenerate every
 figure and table*.  Large intermediate arrays that no downstream analysis reads are dropped, and every file is listed
@@ -6,6 +6,7 @@ with a SHA-256 checksum so that a downloaded copy can be verified (scripts/verif
 """
 import hashlib
 import os
+import re
 
 import numpy as np
 
@@ -82,3 +83,37 @@ def extract_v2_for_timing(epochs_v2):
     """The part of the v2 epochs file the timing analysis needs: respiration epochs, timestamps and the EEG array SHAPES (no EEG)."""
     return {"respiration": epochs_v2["respiration"], "timestamps": epochs_v2["timestamps"],
             "eeg_shapes": {c: {s: tuple(a.shape) for s, a in subj.items()} for c, subj in epochs_v2["EEG"].items()}}
+
+
+def filter_subjects(obj, keep):
+    """Remove the entries of participants who are not in ``keep`` from a nested dict (in place).
+
+    A subject entry is a dict key that is a string of digits ("19"), found in a dict that also has at least one kept subject as a key (so unrelated dicts are never touched).
+    Returns (obj, {subject: number of entries removed}).  Lists of subject IDs and arrays with a subject axis are NOT handled here -- ``scripts/audit_deposit.py`` looks for those.
+    """
+    keep = {str(k) for k in keep}
+    removed = {}
+
+    def rec(o):
+        if isinstance(o, dict):
+            if any(isinstance(k, str) and k in keep for k in o):
+                for k in [k for k in o if isinstance(k, str) and re.fullmatch(r"\d+", k) and k not in keep]:
+                    removed[k] = removed.get(k, 0) + 1
+                    del o[k]
+            for v in list(o.values()):
+                rec(v)
+        elif isinstance(o, (list, tuple)):
+            for v in o:
+                rec(v)
+
+    rec(obj)
+    return obj, removed
+
+
+def normalise_mtimes(folder, when="2026-01-01T00:00:00+00:00"):
+    """Give every file in ``folder`` the same modification time, so that no file carries the dates on which it was made."""
+    import datetime as dt
+    ts = dt.datetime.fromisoformat(when).timestamp()
+    for dp, _, fs in os.walk(folder):
+        for f in fs:
+            os.utime(os.path.join(dp, f), (ts, ts))

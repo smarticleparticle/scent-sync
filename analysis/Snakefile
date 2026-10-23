@@ -147,7 +147,7 @@ if WS["run"]:
 if FIG3["run"]:
     ALL_TARGETS += [f"{FIG}/fig3_ersps.pdf"]
 if FIG1["run"]:
-    ALL_TARGETS += [f"{FIG}/fig1_respiration_example.pdf", f"{FIG}/fig1.svg"]
+    ALL_TARGETS += [f"{FIG}/fig1_respiration_example.pdf", f"{FIG}/fig1.pdf"]
 if CLUSTER["run"]:
     ALL_TARGETS += [f"{RES}/cluster_perm/cluster_perm_summary.csv", f"{FIG}/figS4_cluster_perm.pdf"]
 if PAC["run"]:
@@ -315,9 +315,7 @@ rule fig4:
         code=["scripts/make_fig4.py", "src/olfaction_eeg/figures.py", "src/olfaction_eeg/classify.py"],
     output:
         f"{FIG}/fig4_AB_classification.pdf",
-        f"{FIG}/fig4_AB_classification.png",
         f"{FIG}/figS3_per_odor_selection.pdf",
-        f"{FIG}/figS3_per_odor_selection.png",
     params:
         outdir=FIG,
     shell:
@@ -331,7 +329,6 @@ rule fig5:
         code=["scripts/make_fig5.py", "src/olfaction_eeg/figures.py", "src/olfaction_eeg/classify.py"],
     output:
         f"{FIG}/fig5_habituation.pdf",
-        f"{FIG}/fig5_habituation.png",
     params:
         outdir=FIG,
     shell:
@@ -376,7 +373,6 @@ rule fig2:
               "src/olfaction_eeg/classify.py", "src/olfaction_eeg/checks.py"],
     output:
         f"{FIG}/fig2_pac.pdf",
-        f"{FIG}/fig2_pac.png",
         f"{RES}/pac/pac_group_stats.csv",
         f"{RES}/pac/pac_subject_level.csv",
         f"{RES}/pac/pac_clusters.csv",
@@ -540,7 +536,6 @@ rule cluster_perm:
         f"{RES}/cluster_perm/cluster_perm_results.pkl",
         f"{RES}/cluster_perm/cluster_perm_checks.csv",
         f"{FIG}/figS4_cluster_perm.pdf",
-        f"{FIG}/figS4_cluster_perm.png",
     params:
         outdir=f"{RES}/cluster_perm",
         figdir=FIG,
@@ -564,7 +559,6 @@ rule fig3:
         code=["scripts/make_fig3.py", "src/olfaction_eeg/fig3.py", "src/olfaction_eeg/breath.py", "src/olfaction_eeg/checks.py"],
     output:
         f"{FIG}/fig3_ersps.pdf",
-        f"{FIG}/fig3_ersps.png",
         f"{RES}/fig3/fig3_info.json",
         f"{RES}/fig3/fig3_checks.csv",
     params:
@@ -602,7 +596,6 @@ rule fig1_resp:
         code=["scripts/make_fig1_resp.py", "src/olfaction_eeg/fig1_resp.py"],
     output:
         f"{FIG}/fig1_respiration_example.pdf",
-        f"{FIG}/fig1_respiration_example.png",
     params:
         prefix=f"{FIG}/fig1_respiration_example",
         idx=FIG1["trial_idx"],
@@ -619,7 +612,6 @@ rule figS2:
         code=["scripts/make_figS2.py", "src/olfaction_eeg/fig_s2.py", "src/olfaction_eeg/fooof_gating.py", "src/olfaction_eeg/checks.py"],
     output:
         f"{FIG}/figS2_fooof_examples.pdf",
-        f"{FIG}/figS2_fooof_examples.png",
         f"{RES}/fooof/figS2_examples.json",
         f"{RES}/fooof/figS2_checks.csv",
     params:
@@ -651,7 +643,6 @@ rule word_scoring:
         f"{RES}/word_scoring/embedding_versions.json",
         f"{RES}/word_scoring/word_scoring_checks.csv",
         f"{FIG}/fig4CD_recognition.pdf",
-        f"{FIG}/fig4CD_recognition.png",
     params:
         outdir=f"{RES}/word_scoring",
         figdir=FIG,
@@ -664,15 +655,15 @@ rule word_scoring:
 
 
 rule fig1_figure:
-    """Fig. 1 for the journal: the hand-made illustration (figure_sources/) + the respiration trace, composed as one 180 x 96 mm vector figure (SVG; PDF / EPS / PNG too if Inkscape or CairoSVG is available)."""
+    """Fig. 1 for the journal: the hand-made illustration (figure_sources/) + the respiration trace, assembled as one 180 x 96 mm vector PDF."""
     input:
         trial=FIG1["trial_file"],
-        left="figure_sources/figure1_left_infographic.svg",
+        left="figure_sources/figure1_left_infographic.pdf",
         code=["scripts/make_fig1.py", "src/olfaction_eeg/fig1_compose.py"],
     output:
-        f"{FIG}/fig1.svg",
+        f"{FIG}/fig1.pdf",
     params:
         prefix=f"{FIG}/fig1",
         idx=FIG1["trial_idx"],
     shell:
-        "python scripts/make_fig1.py --left-svg {input.left} --trial-file {input.trial} --trial-idx {params.idx} --out-prefix {params.prefix}"
+        "python scripts/make_fig1.py --left-pdf {input.left} --trial-file {input.trial} --trial-idx {params.idx} --out-prefix {params.prefix}"

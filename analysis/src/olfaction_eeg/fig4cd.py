@@ -234,11 +234,11 @@ def create_bottom_row_figure(df_combined, combined_profiles_v2, empirical_profil
 
 
 def make_fig4cd(df_combined, combined_profiles_v2, empirical_profiles_expanded, semantic_model_v2, out_prefix=None):
-    """Run ``create_bottom_row_figure`` under the notebook's font settings and save PNG (300 dpi) and PDF."""
+    """Run ``create_bottom_row_figure`` under the notebook's font settings and save it as a PDF."""
     with plt.rc_context(RC):
         fig = create_bottom_row_figure(df_combined=df_combined, combined_profiles_v2=combined_profiles_v2,
                                        empirical_profiles_expanded=empirical_profiles_expanded,
-                                       semantic_model_v2=semantic_model_v2, save_path=(out_prefix + ".png") if out_prefix else None)
+                                       semantic_model_v2=semantic_model_v2)
         if out_prefix:
             fig.savefig(out_prefix + ".pdf", bbox_inches="tight")
     return fig

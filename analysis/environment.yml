@@ -25,6 +25,7 @@ dependencies:
       - pyyaml==6.0.3
       - snakemake==9.27.0
       - fire==0.7.1
+      - pypdf>=4                 # assembles Fig. 1 (pure Python)
       - statsmodels==0.15.0           # only used by the unit tests (cross-checks the FDR implementation)
       - pytest
       - sentence-transformers==6.1.0   # free-response analysis (Fig. 4C/D); versions as recorded in results/word_scoring/embedding_versions.json

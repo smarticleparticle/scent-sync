@@ -84,3 +84,53 @@ def test_make_deposit_copy_all_builds_a_verifiable_folder(tmp_path):
     status = deposit.verify_manifest(str(out / "MANIFEST.sha256"), str(out))
     assert status and all(v == "ok" for v in status.values())
     assert "none.npy" in r.stdout                                     # the files that were not found are reported, not silently dropped
+
+
+def test_filter_subjects_removes_only_other_participants():
+    obj = {"EEG": {"water": {"22": [1], "19": [2], "30": [3]}}, "meta": {"19": {"x": 1}, "22": {"x": 2}}, "counts": {"1": 5, "2": 6},
+           "subjects": ["22", "19"], "lookup": {"19": "a"}}
+    out, removed = deposit.filter_subjects(obj, keep={"22"})
+    assert set(out["EEG"]["water"]) == {"22"} and set(out["meta"]) == {"22"}
+    assert removed == {"19": 2, "30": 1}
+    assert out["counts"] == {"1": 5, "2": 6}                 # a dict without any kept participant is not a subject dict: untouched
+    assert out["lookup"] == {"19": "a"}
+    assert out["subjects"] == ["22", "19"]                   # lists of IDs are not rewritten (the audit looks for them)
+
+
+def test_make_deposit_analyzed_only_leaves_out_the_other_participants(tmp_path):
+    import subprocess
+    import yaml
+    src = tmp_path / "src"
+    (src / "info").mkdir(parents=True)
+    (src / "ersp").mkdir()
+    def dump(name, obj):
+        np.save(src / name, obj, allow_pickle=True)
+    dump("epochs.npy", {"EEG": {"water": {"22": np.zeros(3), "19": np.ones(3)}}, "respiration": {"water": {"22": np.zeros(3), "19": np.ones(3)}}})
+    dump("t1.npy", {"timestamps": {"water": {"22": np.arange(3.0), "30": np.arange(3.0)}}})
+    dump("t2.npy", {"metadata": {"22": {"bad_channels": ["E1"]}, "25": {"bad_channels": []}}})
+    dump("psd.npy", {"psd": {"22": {"E1": 1}, "19": {"E1": 2}}})
+    dump("trial.npy", {"subject": "22", "trials": np.zeros((2, 3))})
+    for f in ("phase_aligned_fullbreath_1deg.npy", "time_aligned_long.npy", "time_aligned_short.npy"):
+        dump("ersp/" + f, {"water": {"22": {0: np.zeros(2)}}})
+    for sid in ("22", "19", "20"):
+        (src / "info" / f"subject{sid}_info.fif").write_bytes(b"i" + sid.encode())
+    cfg = {"paths": {"epochs": str(src / "epochs.npy"), "info_dir": str(src / "info"), "epochs_v2_for_timing": str(src / "t1.npy"),
+                     "continuous_respiration_v2": str(src / "t2.npy"), "psd_cache": str(src / "psd.npy"), "pac_results": str(src / "none.npy"),
+                     "full_recordings_dir": str(src / "none"), "results": str(src)},
+           "fig1_resp": {"trial_file": str(src / "trial.npy")}, "subjects": {"normosmia": ["22"]}}
+    yaml.safe_dump(cfg, open(tmp_path / "cfg.yaml", "w"))
+    out = tmp_path / "deposit"
+    r = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.dirname(__file__)), "scripts", "make_deposit.py"), "--config", str(tmp_path / "cfg.yaml"), "--out-dir", str(out),
+                        "--include-ersp", "--copy-all", "--analyzed-only"], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    assert (out / "info" / "subject22_info.fif").exists() and not (out / "info" / "subject19_info.fif").exists() and not (out / "info" / "subject20_info.fif").exists()
+    ep = np.load(out / "epochs.npy", allow_pickle=True).item()
+    assert set(ep["EEG"]["water"]) == {"22"} and set(ep["respiration"]["water"]) == {"22"}
+    assert set(np.load(out / "psd.npy", allow_pickle=True).item()["psd"]) == {"22"}
+    assert set(np.load(out / "t1.npy", allow_pickle=True).item()["timestamps"]["water"]) == {"22"}
+    assert "subject 19" in r.stdout and "subject30" not in r.stdout and "subject 30" in r.stdout and "subject 25" in r.stdout
+    status = deposit.verify_manifest(str(out / "MANIFEST.sha256"), str(out))
+    assert status and all(v == "ok" for v in status.values())
+    mtimes = {round(os.path.getmtime(os.path.join(dp, f))) for dp, _, fs in os.walk(out) for f in fs}
+    assert len(mtimes) == 1                                                  # every file carries the same (neutral) date
+    assert os.path.exists(src / "epochs.npy") and set(np.load(src / "epochs.npy", allow_pickle=True).item()["EEG"]["water"]) == {"22", "19"}   # the originals are untouched
