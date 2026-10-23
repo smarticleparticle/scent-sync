@@ -7,7 +7,7 @@ name = "olfaction-eeg"
 version = "0.1.0"
 description = "Respiratory-phase-locked EEG responses to odors: analysis code"
 requires-python = ">=3.9"
-dependencies = ["numpy", "pandas", "scipy", "scikit-learn", "pyyaml", "matplotlib"]
+dependencies = ["numpy", "pandas", "scipy", "scikit-learn", "pyyaml", "matplotlib", "pypdf"]
 
 [project.optional-dependencies]
 recordings = ["mne", "h5py"]            # raw EEGLAB/CSV -> epochs (stage 0)
